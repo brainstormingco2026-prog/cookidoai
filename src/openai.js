@@ -2,7 +2,7 @@ const OpenAI = require('openai');
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-async function generarReceta(descripcion) {
+async function generarReceta(descripcion, detalles = '') {
   const completion = await client.chat.completions.create({
     model: 'gpt-4o',
     response_format: { type: 'json_object' },
@@ -31,7 +31,9 @@ Adapta las instrucciones para Thermomix cuando sea posible (velocidades, tempera
       },
       {
         role: 'user',
-        content: `Crea una receta para: ${descripcion}`,
+        content: detalles
+          ? `Crea una receta para: ${descripcion}\n\nEspecificaciones adicionales: ${detalles}`
+          : `Crea una receta para: ${descripcion}`,
       },
     ],
   });
@@ -40,4 +42,87 @@ Adapta las instrucciones para Thermomix cuando sea posible (velocidades, tempera
   return JSON.parse(texto);
 }
 
-module.exports = { generarReceta };
+async function adaptarReceta(contenidoOriginal, detalles = '') {
+  const completion = await client.chat.completions.create({
+    model: 'gpt-4o',
+    response_format: { type: 'json_object' },
+    messages: [
+      {
+        role: 'system',
+        content: `Eres un chef experto en cocina española y recetas para Thermomix.
+Recibirás el contenido de una receta existente. Tu tarea es adaptarla para Thermomix.
+Devuelve SIEMPRE un JSON con esta estructura exacta:
+{
+  "titulo": "Nombre de la receta",
+  "descripcion": "Descripción breve apetitosa",
+  "porciones": 4,
+  "tiempo_preparacion": 15,
+  "tiempo_coccion": 30,
+  "dificultad": "fácil|media|difícil",
+  "ingredientes": [
+    { "cantidad": "200", "unidad": "g", "nombre": "harina" }
+  ],
+  "pasos": [
+    "descripción detallada del paso adaptado para Thermomix, sin prefijo Paso 1"
+  ]
+}
+Adapta tiempos, temperaturas y velocidades para Thermomix. Mantén los ingredientes originales salvo que se indique lo contrario.`,
+      },
+      {
+        role: 'user',
+        content: detalles
+          ? `Adapta esta receta para Thermomix:\n\n${contenidoOriginal}\n\nInstrucciones adicionales: ${detalles}`
+          : `Adapta esta receta para Thermomix:\n\n${contenidoOriginal}`,
+      },
+    ],
+  });
+  return JSON.parse(completion.choices[0].message.content);
+}
+
+async function leerRecetaDeFoto(base64, mimeType, detalles = '') {
+  const completion = await client.chat.completions.create({
+    model: 'gpt-4o',
+    response_format: { type: 'json_object' },
+    messages: [
+      {
+        role: 'system',
+        content: `Eres un chef experto en cocina española y recetas para Thermomix.
+Recibirás la foto de una receta. Extrae todos los datos y adáptala para Thermomix.
+Devuelve SIEMPRE un JSON con esta estructura exacta:
+{
+  "titulo": "Nombre de la receta",
+  "descripcion": "Descripción breve apetitosa",
+  "porciones": 4,
+  "tiempo_preparacion": 15,
+  "tiempo_coccion": 30,
+  "dificultad": "fácil|media|difícil",
+  "ingredientes": [
+    { "cantidad": "200", "unidad": "g", "nombre": "harina" }
+  ],
+  "pasos": [
+    "descripción detallada del paso adaptado para Thermomix, sin prefijo Paso 1"
+  ]
+}
+Si algo no está claro en la imagen, usa tu criterio como chef.`,
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            image_url: { url: `data:${mimeType};base64,${base64}` },
+          },
+          {
+            type: 'text',
+            text: detalles
+              ? `Lee esta receta y adáptala para Thermomix. Instrucciones adicionales: ${detalles}`
+              : 'Lee esta receta y adáptala para Thermomix.',
+          },
+        ],
+      },
+    ],
+  });
+  return JSON.parse(completion.choices[0].message.content);
+}
+
+module.exports = { generarReceta, adaptarReceta, leerRecetaDeFoto };

@@ -1,115 +1,589 @@
 <!DOCTYPE html>
-<html lang="es">
+<html class="light" lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ChatGPT → Cookidoo</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>CookidoAI</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "on-primary-fixed": "#410003",
+            "primary-fixed": "#ffdad6",
+            "secondary-fixed": "#b1f0ce",
+            "on-surface": "#211b0b",
+            "surface-variant": "#eee1c7",
+            "primary-fixed-dim": "#ffb3ad",
+            "surface-dim": "#e5d9bf",
+            "on-error": "#ffffff",
+            "tertiary-fixed-dim": "#9dcaff",
+            "on-tertiary-fixed-variant": "#00497c",
+            "on-secondary-fixed-variant": "#0e5138",
+            "surface-container-high": "#f4e7cc",
+            "on-primary-container": "#ffd2ce",
+            "surface-container-lowest": "#ffffff",
+            "on-secondary-fixed": "#002114",
+            "inverse-surface": "#37301e",
+            "inverse-primary": "#ffb3ad",
+            "tertiary": "#004c7f",
+            "on-secondary-container": "#316e52",
+            "background": "#fff8f1",
+            "surface-container-highest": "#eee1c7",
+            "on-primary": "#ffffff",
+            "secondary-fixed-dim": "#95d4b3",
+            "secondary-container": "#aeeecb",
+            "error-container": "#ffdad6",
+            "secondary": "#2c694e",
+            "tertiary-container": "#0064a6",
+            "on-surface-variant": "#5c403d",
+            "on-tertiary-fixed": "#001d35",
+            "on-tertiary": "#ffffff",
+            "surface-bright": "#fff8f1",
+            "surface": "#fff8f1",
+            "on-secondary": "#ffffff",
+            "primary": "#970012",
+            "tertiary-fixed": "#d1e4ff",
+            "surface-container-low": "#fff2d9",
+            "on-error-container": "#93000a",
+            "inverse-on-surface": "#fdf0d5",
+            "primary-container": "#c1121f",
+            "error": "#ba1a1a",
+            "on-tertiary-container": "#c6dfff",
+            "outline": "#906f6c",
+            "on-primary-fixed-variant": "#930011",
+            "surface-container": "#faedd2",
+            "outline-variant": "#e5bdb9",
+            "on-background": "#211b0b",
+            "surface-tint": "#bd0d1d"
+          },
+          fontFamily: {
+            "headline": ["Manrope"],
+            "body": ["Inter"],
+            "label": ["Inter"]
+          },
+          borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1.5rem", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+  <style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .primary-gradient {
+      background: linear-gradient(135deg, #970012 0%, #C1121F 100%);
+    }
+    .fade-frase { transition: opacity 0.4s ease; }
+    @keyframes balanceo {
+      0%, 100% { transform: rotate(-8deg); }
+      50%       { transform: rotate(8deg); }
+    }
+    .icono-animado { display: inline-block; animation: balanceo 2s ease-in-out infinite; }
+    .step-glow { box-shadow: 0 0 12px rgba(151, 0, 18, 0.3); }
+    .loading-shimmer {
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      background-size: 200% 100%;
+      animation: shimmer 2s infinite;
+    }
+    @keyframes shimmer {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  200% 0; }
+    }
+    .progress-glow { box-shadow: 0 0 15px rgba(151, 0, 18, 0.3); }
+    .success-glow { box-shadow: 0 0 40px rgba(44, 105, 78, 0.15); }
+    @keyframes fadeSlide {
+      0%, 100% { opacity: 0; transform: translateY(10px); }
+      10%, 90%  { opacity: 1; transform: translateY(0); }
+    }
+    .animate-phrase { animation: fadeSlide 8s infinite; }
+  </style>
 </head>
-<body>
-  <div class="app">
-    <header>
-      <h1>🍳 ChatGPT → Cookidoo</h1>
-      <p>Genera recetas con IA y créalas automáticamente en Cookidoo</p>
-    </header>
+<body class="bg-background text-on-surface font-body selection:bg-primary-fixed selection:text-on-primary-fixed overflow-x-hidden min-h-screen flex flex-col text-lg">
 
-    <!-- PANTALLA PRINCIPAL: receta + login en una sola tarjeta -->
-    <section id="seccion-principal" class="card">
-      <div class="principal-grid">
-
-        <!-- Columna izquierda: qué receta -->
-        <div class="principal-col">
-          <h2>¿Qué quieres cocinar?</h2>
-          <textarea
-            id="descripcion"
-            placeholder="Ej: Pasta carbonara para 4 personas, pollo al curry con coco, tarta de manzana fácil..."
-            rows="4"
-          ></textarea>
-          <button id="btn-generar" class="btn-primary btn-full">Generar receta con ChatGPT</button>
-        </div>
-
-        <!-- Separador vertical -->
-        <div class="principal-sep"></div>
-
-        <!-- Columna derecha: login Cookidoo -->
-        <div class="principal-col">
-          <h2>Cuenta Cookidoo</h2>
-          <div id="estado-sesion-ok" class="hidden">
-            <p class="aviso sesion-ok">✓ Sesión activa</p>
-            <button id="btn-cerrar-sesion" class="btn-secondary btn-full">Cerrar sesión</button>
-          </div>
-          <div id="estado-sesion-no">
-            <p class="aviso">La primera vez necesitas hacer login en el navegador para que la app pueda crear recetas por ti.</p>
-            <button id="btn-login-principal" class="btn-success btn-full">Conectar con Cookidoo →</button>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- PASO 2: Revisar receta -->
-    <section id="seccion-receta" class="card hidden">
-      <h2>Revisa la receta generada</h2>
-      <div id="receta-preview">
-        <div class="receta-header">
-          <h3 id="receta-titulo"></h3>
-          <p id="receta-descripcion" class="receta-desc"></p>
-          <div class="receta-meta">
-            <span id="receta-porciones"></span>
-            <span id="receta-tiempo"></span>
-            <span id="receta-dificultad"></span>
-          </div>
-        </div>
-        <div class="receta-columnas">
-          <div>
-            <h4>Ingredientes</h4>
-            <ul id="receta-ingredientes"></ul>
-          </div>
-          <div>
-            <h4>Pasos</h4>
-            <ol id="receta-pasos"></ol>
-          </div>
-        </div>
-      </div>
-      <div class="acciones">
-        <button id="btn-regenerar" class="btn-secondary">Regenerar</button>
-        <button id="btn-aceptar" class="btn-primary">Crear en Cookidoo →</button>
-      </div>
-    </section>
-
-    <!-- PROGRESO: frases de cocina + tiempo estimado -->
-    <section id="seccion-progreso" class="card hidden">
-      <div class="progreso-centro">
-        <div class="progreso-icono">🍳</div>
-        <h2 id="frase-cocina">Preparando los ingredientes...</h2>
-        <p id="tiempo-restante" class="tiempo-restante">Tiempo estimado: calculando...</p>
-        <div class="barra-progreso-wrap">
-          <div id="barra-progreso" class="barra-progreso"></div>
-        </div>
-      </div>
-
-      <!-- Resultado final (oculto hasta completar) -->
-      <div id="resultado" class="hidden">
-        <p id="resultado-mensaje"></p>
-        <div id="compartir-panel" class="hidden">
-          <div class="compartir-link">
-            <a id="link-receta" href="#" target="_blank">Ver receta en Cookidoo →</a>
-          </div>
-          <a id="btn-whatsapp" href="#" target="_blank" class="btn-whatsapp">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.558 4.121 1.531 5.856L.057 23.943l6.204-1.496A11.934 11.934 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.802 9.802 0 01-5.031-1.388l-.361-.214-3.681.888.935-3.576-.235-.368A9.786 9.786 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/></svg>
-            Compartir por WhatsApp
-          </a>
-        </div>
-        <div class="acciones" style="justify-content:center">
-          <button id="btn-nueva" class="btn-primary">Crear otra receta</button>
-        </div>
-      </div>
-    </section>
-
-    <div id="overlay-cargando" class="overlay hidden">
-      <div class="spinner-grande"></div>
-      <p id="overlay-texto">Generando receta...</p>
+  <!-- Header -->
+  <nav class="w-full z-50 bg-orange-50/80 backdrop-blur-xl bg-gradient-to-b from-orange-100/20 to-transparent">
+    <div class="flex justify-center items-center h-20 px-8 max-w-full">
+      <div class="text-3xl font-bold tracking-tighter text-red-800 font-headline">CookidoAI</div>
     </div>
+  </nav>
+
+  <main class="flex-1 p-6 md:p-12">
+    <div class="w-full">
+
+      <!-- ── PANTALLA PRINCIPAL ── -->
+      <div id="seccion-principal" class="max-w-3xl mx-auto">
+        <!-- Título -->
+        <section class="text-center space-y-8 mb-12">
+          <h1 class="text-5xl md:text-6xl font-headline font-extrabold tracking-tighter text-on-surface leading-tight">
+            Crea tu próxima <span class="text-primary">receta</span>
+          </h1>
+
+          <!-- Tabs de modo -->
+          <div class="flex items-center justify-center gap-2 p-1 bg-surface-container-high rounded-2xl w-fit mx-auto flex-wrap">
+            <button id="tab-crear" class="tab-btn px-6 py-2.5 rounded-xl font-headline font-bold text-sm transition-all bg-surface-container-lowest text-on-surface shadow-sm">
+              <span class="material-symbols-outlined text-sm align-middle mr-1">add_circle</span>
+              Crear desde cero
+            </button>
+            <button id="tab-adaptar" class="tab-btn px-6 py-2.5 rounded-xl font-headline font-bold text-sm transition-all text-on-surface-variant hover:text-on-surface">
+              <span class="material-symbols-outlined text-sm align-middle mr-1">auto_fix_high</span>
+              Adaptar receta
+            </button>
+            <button id="tab-foto" class="tab-btn px-6 py-2.5 rounded-xl font-headline font-bold text-sm transition-all text-on-surface-variant hover:text-on-surface">
+              <span class="material-symbols-outlined text-sm align-middle mr-1">photo_camera</span>
+              Foto de receta
+            </button>
+          </div>
+
+          <!-- Formulario: Crear desde cero -->
+          <div id="form-crear">
+            <div class="relative group">
+              <div class="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-2xl blur opacity-10 group-focus-within:opacity-25 transition duration-500"></div>
+              <div class="relative flex flex-col gap-3 bg-surface-container-lowest border border-transparent focus-within:border-surface-tint/20 rounded-2xl p-3 shadow-xl shadow-on-surface/5 transition-all">
+                <div class="flex items-center px-4 pt-1">
+                  <span class="material-symbols-outlined text-stone-400 mr-3">restaurant</span>
+                  <input
+                    id="descripcion"
+                    class="w-full bg-transparent border-none focus:ring-0 text-xl font-body placeholder:text-stone-400 text-on-surface"
+                    placeholder="p. ej. pasta carbonara para 4 personas"
+                    type="text"
+                  />
+                </div>
+                <div class="border-t border-outline-variant/20 mx-2"></div>
+                <div class="flex items-start px-4 pb-1">
+                  <span class="material-symbols-outlined text-stone-400 mr-3 mt-1">tune</span>
+                  <textarea
+                    id="detalles"
+                    rows="2"
+                    class="w-full bg-transparent border-none focus:ring-0 text-base font-body placeholder:text-stone-400 text-on-surface resize-none"
+                    placeholder="Detalles opcionales: sin gluten, versión vegana, menos picante, tiempo máximo 30 min..."
+                  ></textarea>
+                </div>
+                <button id="btn-generar" class="px-8 py-4 primary-gradient text-white rounded-xl font-bold active:scale-[0.98] transition-all shadow-lg shadow-primary/20">
+                  Generar receta
+                </button>
+              </div>
+            </div>
+            <div id="error-crear" class="hidden mt-3 flex items-center gap-2 px-4 py-3 bg-error-container/60 text-on-error-container rounded-xl text-sm font-medium">
+              <span class="material-symbols-outlined text-base flex-shrink-0">error_outline</span>
+              <span id="error-crear-msg"></span>
+            </div>
+          </div>
+
+          <!-- Formulario: Adaptar receta existente -->
+          <div id="form-adaptar" class="hidden">
+            <div class="relative group">
+              <div class="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-2xl blur opacity-10 group-focus-within:opacity-25 transition duration-500"></div>
+              <div class="relative flex flex-col gap-3 bg-surface-container-lowest border border-transparent focus-within:border-surface-tint/20 rounded-2xl p-3 shadow-xl shadow-on-surface/5 transition-all">
+                <div class="flex items-center px-4 pt-1">
+                  <span class="material-symbols-outlined text-stone-400 mr-3">link</span>
+                  <input
+                    id="url-receta"
+                    class="w-full bg-transparent border-none focus:ring-0 text-base font-body placeholder:text-stone-400 text-on-surface"
+                    placeholder="https://cookidoo.es/recipes/recipe/es-ES/r123456"
+                    type="url"
+                  />
+                </div>
+                <div class="border-t border-outline-variant/20 mx-2"></div>
+                <div class="flex items-start px-4 pb-1">
+                  <span class="material-symbols-outlined text-stone-400 mr-3 mt-1">tune</span>
+                  <textarea
+                    id="detalles-adaptar"
+                    rows="2"
+                    class="w-full bg-transparent border-none focus:ring-0 text-base font-body placeholder:text-stone-400 text-on-surface resize-none"
+                    placeholder="¿Qué quieres cambiar? p. ej. versión sin lactosa, reducir azúcar, adaptar para Thermomix TM6..."
+                  ></textarea>
+                </div>
+                <button id="btn-adaptar" class="px-8 py-4 primary-gradient text-white rounded-xl font-bold active:scale-[0.98] transition-all shadow-lg shadow-primary/20">
+                  Adaptar receta
+                </button>
+              </div>
+            </div>
+            <div id="error-adaptar" class="hidden mt-3 flex items-center gap-2 px-4 py-3 bg-error-container/60 text-on-error-container rounded-xl text-sm font-medium">
+              <span class="material-symbols-outlined text-base flex-shrink-0">error_outline</span>
+              <span id="error-adaptar-msg"></span>
+            </div>
+          </div>
+
+          <!-- Formulario: Foto de receta -->
+          <div id="form-foto" class="hidden">
+            <div class="relative group">
+              <div class="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-2xl blur opacity-10 group-focus-within:opacity-25 transition duration-500"></div>
+              <div class="relative flex flex-col gap-4 bg-surface-container-lowest border border-transparent rounded-2xl p-5 shadow-xl shadow-on-surface/5">
+
+                <!-- Zona de carga de imagen -->
+                <label id="zona-foto" for="input-foto" class="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-outline-variant/40 rounded-xl p-8 cursor-pointer hover:border-primary/40 hover:bg-surface-container-low/30 transition-all">
+                  <span class="material-symbols-outlined text-5xl text-stone-400">add_a_photo</span>
+                  <div class="text-center">
+                    <p class="font-headline font-bold text-on-surface">Subir foto, tomar una o subir PDF</p>
+                    <p class="text-sm text-on-surface-variant mt-1">JPG, PNG, WEBP o PDF · Máx. 10 MB</p>
+                  </div>
+                  <input id="input-foto" type="file" accept="image/*,application/pdf" class="hidden"/>
+                </label>
+
+                <!-- Preview imagen -->
+                <div id="preview-foto" class="hidden relative rounded-xl overflow-hidden">
+                  <img id="img-preview" src="" alt="Preview" class="w-full max-h-64 object-contain rounded-xl bg-surface-container-low"/>
+                  <button id="btn-quitar-foto" class="absolute top-2 right-2 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors">
+                    <span class="material-symbols-outlined text-base">close</span>
+                  </button>
+                </div>
+
+                <!-- Preview PDF -->
+                <div id="preview-pdf" class="hidden relative flex items-center gap-4 px-5 py-4 bg-surface-container-low rounded-xl">
+                  <span class="material-symbols-outlined text-4xl text-primary">picture_as_pdf</span>
+                  <div class="flex-1 min-w-0">
+                    <p class="font-bold text-on-surface truncate" id="pdf-nombre">archivo.pdf</p>
+                    <p class="text-sm text-on-surface-variant">PDF listo para procesar</p>
+                  </div>
+                  <button id="btn-quitar-pdf" class="w-8 h-8 bg-surface-container-high rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors flex-shrink-0">
+                    <span class="material-symbols-outlined text-base">close</span>
+                  </button>
+                </div>
+
+                <div class="flex items-start px-1">
+                  <span class="material-symbols-outlined text-stone-400 mr-3 mt-1">tune</span>
+                  <textarea
+                    id="detalles-foto"
+                    rows="2"
+                    class="w-full bg-transparent border-none focus:ring-0 text-base font-body placeholder:text-stone-400 text-on-surface resize-none"
+                    placeholder="Detalles opcionales: adaptar para TM6, versión sin gluten..."
+                  ></textarea>
+                </div>
+
+                <button id="btn-foto" class="px-8 py-4 primary-gradient text-white rounded-xl font-bold active:scale-[0.98] transition-all shadow-lg shadow-primary/20">
+                  Leer y adaptar receta
+                </button>
+              </div>
+            </div>
+            <div id="error-foto" class="hidden mt-3 flex items-center gap-2 px-4 py-3 bg-error-container/60 text-on-error-container rounded-xl text-sm font-medium">
+              <span class="material-symbols-outlined text-base flex-shrink-0">error_outline</span>
+              <span id="error-foto-msg"></span>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- Estado sesión Cookidoo -->
+        <section class="flex flex-col items-center">
+          <div class="bg-surface-container-low/50 border border-outline-variant/20 rounded-3xl p-6 w-full max-w-md">
+
+            <!-- Sesión activa -->
+            <div id="estado-sesion-ok" class="hidden">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <div class="relative">
+                    <span class="material-symbols-outlined text-secondary text-3xl" style="font-variation-settings: 'FILL' 1;">cloud_done</span>
+                    <div class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-secondary rounded-full border-2 border-background animate-pulse"></div>
+                  </div>
+                  <div>
+                    <div class="text-[10px] text-secondary font-black uppercase tracking-wider leading-none mb-1">Cookidoo Session</div>
+                    <div class="font-headline font-bold text-on-surface text-xl">Activa</div>
+                    <div id="sesion-email" class="text-sm text-stone-400 mt-0.5"></div>
+                  </div>
+                </div>
+                <button id="btn-cerrar-sesion" class="px-4 py-2 text-stone-500 hover:text-primary transition-colors flex items-center gap-2 group text-xs font-bold uppercase tracking-widest border border-stone-200 rounded-full hover:bg-white">
+                  <span>Logout</span>
+                  <span class="material-symbols-outlined text-sm group-hover:translate-x-0.5 transition-transform">logout</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Sin sesión -->
+            <div id="estado-sesion-no">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <div class="relative">
+                    <span class="material-symbols-outlined text-stone-400 text-3xl">cloud_off</span>
+                  </div>
+                  <div>
+                    <div class="text-[10px] text-stone-400 font-black uppercase tracking-wider leading-none mb-1">Cookidoo Session</div>
+                    <div class="font-headline font-bold text-on-surface text-xl">Sin conectar</div>
+                  </div>
+                </div>
+                <button id="btn-login-principal" class="px-4 py-2 primary-gradient text-white transition-colors flex items-center gap-2 group text-xs font-bold uppercase tracking-widest rounded-full shadow-md shadow-primary/20">
+                  <span>Conectar</span>
+                  <span class="material-symbols-outlined text-sm group-hover:translate-x-0.5 transition-transform">login</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+      </div>
+
+      <!-- ── REVISAR RECETA ── -->
+      <div id="seccion-receta" class="hidden max-w-7xl mx-auto">
+
+        <!-- Hero header -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10 items-end">
+          <div class="lg:col-span-8 space-y-6">
+            <h1 id="receta-titulo" class="text-5xl lg:text-7xl font-headline font-extrabold tracking-tighter text-on-surface leading-none"></h1>
+            <p id="receta-descripcion" class="text-2xl text-on-surface-variant leading-relaxed font-body max-w-2xl"></p>
+            <div class="flex flex-wrap gap-8 py-2">
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">groups</span>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Porciones</p>
+                  <p id="receta-porciones" class="font-headline font-bold"></p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">schedule</span>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Tiempo total</p>
+                  <p id="receta-tiempo" class="font-headline font-bold"></p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">restaurant_menu</span>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Dificultad</p>
+                  <p id="receta-dificultad" class="font-headline font-bold"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Aviso sesión inactiva -->
+        <div id="aviso-sesion" class="hidden mb-4 flex items-center gap-3 px-5 py-4 bg-surface-container-high border border-outline-variant/30 rounded-xl text-sm">
+          <span class="material-symbols-outlined text-primary flex-shrink-0">cloud_off</span>
+          <p class="text-on-surface-variant flex-1">No tienes sesión activa en Cookidoo. <button id="btn-ir-login" class="text-primary font-bold underline hover:no-underline">Conectarte ahora</button></p>
+          <button id="btn-cerrar-aviso" class="text-on-surface-variant hover:text-on-surface transition-colors">
+            <span class="material-symbols-outlined text-base">close</span>
+          </button>
+        </div>
+
+        <!-- Barra de acciones -->
+        <div class="flex gap-4 mb-12 p-4 bg-surface-container-low rounded-xl">
+          <button id="btn-aceptar" class="primary-gradient text-white px-8 py-3 rounded-xl font-headline font-bold flex items-center gap-2 active:scale-95 duration-200 shadow-lg">
+            <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">sync_alt</span>
+            Crear en Cookidoo
+          </button>
+          <button id="btn-regenerar" class="bg-surface-container-high text-on-surface px-8 py-3 rounded-xl font-headline font-bold flex items-center gap-2 hover:bg-surface-container-highest transition-colors active:opacity-80">
+            <span class="material-symbols-outlined text-sm">refresh</span>
+            Regenerar
+          </button>
+        </div>
+
+        <!-- Ingredientes + Pasos -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-16 pb-16">
+
+          <!-- Ingredientes (izquierda sticky) -->
+          <div class="lg:col-span-4 space-y-8">
+            <div class="sticky top-8">
+              <h3 class="font-headline text-4xl font-extrabold tracking-tight mb-8">Ingredientes</h3>
+              <ul id="receta-ingredientes" class="space-y-1"></ul>
+            </div>
+          </div>
+
+          <!-- Pasos (derecha con línea de tiempo) -->
+          <div class="lg:col-span-8">
+            <h3 class="font-headline text-4xl font-extrabold tracking-tight mb-8">Pasos de preparación</h3>
+            <ol id="receta-pasos" class="space-y-12 relative">
+              <div class="absolute left-6 top-8 bottom-8 w-0.5 bg-surface-container-highest"></div>
+            </ol>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── PROGRESO (pantalla completa) ── -->
+      <div id="seccion-progreso" class="hidden fixed inset-0 z-40 bg-background overflow-hidden">
+
+        <!-- Fondo decorativo -->
+        <div class="absolute inset-0 z-0 opacity-10">
+          <div class="w-full h-full bg-gradient-to-br from-stone-300 to-stone-100"></div>
+        </div>
+
+        <main class="relative z-10 flex flex-col items-center justify-center min-h-screen px-6">
+
+          <!-- Tarjeta de progreso -->
+          <div id="progreso-centro" class="w-full max-w-2xl bg-surface-container-low/80 backdrop-blur-2xl rounded-[2.5rem] p-10 md:p-16 shadow-2xl relative overflow-hidden border border-white/20">
+
+            <!-- Mensaje dinámico -->
+            <div class="flex flex-col items-center text-center space-y-6 mb-12">
+              <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-2">
+                <span class="material-symbols-outlined text-5xl animate-pulse">restaurant</span>
+              </div>
+              <div class="space-y-3 h-24 flex flex-col justify-center">
+                <h2 class="font-headline text-3xl font-bold text-on-surface tracking-tight">Cocinando tu Receta</h2>
+                <p id="frase-cocina" class="text-on-surface-variant text-xl font-light italic animate-phrase">Preparando los ingredientes...</p>
+              </div>
+            </div>
+
+            <!-- Barra de progreso -->
+            <div class="space-y-10">
+              <div class="relative">
+                <div class="flex justify-between items-end mb-4 px-1">
+                  <span class="font-label text-xs uppercase tracking-widest text-on-surface-variant font-semibold">Progreso</span>
+                  <span id="progreso-pct" class="font-headline text-3xl font-extrabold text-primary">0%</span>
+                </div>
+                <div class="h-4 w-full bg-surface-container-highest rounded-full overflow-hidden relative">
+                  <div id="barra-progreso" class="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-primary-container rounded-full progress-glow flex items-center justify-end transition-all duration-1000" style="width:0%">
+                    <div class="h-full w-24 loading-shimmer opacity-40"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tiempo estimado -->
+              <div class="flex justify-center">
+                <div class="flex items-center gap-3 px-6 py-3 bg-surface-container-lowest/50 rounded-full">
+                  <span class="material-symbols-outlined text-primary">schedule</span>
+                  <p class="text-sm font-medium">
+                    <span class="text-on-surface-variant uppercase tracking-widest text-[10px] font-bold block leading-none mb-1">Tiempo Estimado</span>
+                    <span id="tiempo-restante" class="font-headline font-bold text-lg">calculando...</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Decoración -->
+            <div class="absolute -bottom-12 -right-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl"></div>
+            <div class="absolute -top-12 -left-12 w-48 h-48 bg-secondary/5 rounded-full blur-3xl"></div>
+          </div>
+
+        </main>
+      </div>
+
+      <!-- Resultado (pantalla editorial, cubre el overlay de progreso) -->
+      <div id="resultado" class="hidden fixed inset-0 z-50 bg-surface overflow-auto flex flex-col">
+
+        <!-- Mini header -->
+        <div class="flex justify-center items-center h-16 px-8 border-b border-outline-variant/20 flex-shrink-0">
+          <div class="text-2xl font-bold tracking-tighter text-red-800 font-headline">CookidoAI</div>
+        </div>
+
+        <!-- Panel éxito -->
+        <div id="panel-exito" class="hidden flex-grow flex items-center justify-center px-6 py-12">
+          <div class="max-w-4xl w-full grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 items-center">
+
+            <!-- Visual lado izquierdo -->
+            <div class="md:col-span-5 relative order-2 md:order-1">
+              <div class="relative rounded-2xl overflow-hidden aspect-[4/5] shadow-2xl success-glow -rotate-2 primary-gradient flex items-center justify-center">
+                <span class="text-[8rem] leading-none select-none">🍽️</span>
+              </div>
+              <div class="absolute -top-6 -right-6 w-28 h-28 bg-secondary-container rounded-2xl flex flex-col items-center justify-center rotate-6 shadow-lg">
+                <span class="material-symbols-outlined text-secondary text-4xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+              </div>
+            </div>
+
+            <!-- Contenido lado derecho -->
+            <div class="md:col-span-7 flex flex-col items-start order-1 md:order-2 space-y-8">
+              <div class="space-y-4">
+                <h1 class="text-5xl md:text-6xl font-headline font-extrabold tracking-tighter text-on-surface leading-tight">
+                  ¡Receta creada en <span class="text-primary italic">Cookidoo!</span>
+                </h1>
+                <p class="text-on-surface-variant text-lg max-w-md leading-relaxed">
+                  Tu receta ha sido creada con éxito y ya está disponible en tu cuenta para empezar a cocinar.
+                </p>
+              </div>
+
+              <div class="w-full space-y-4 pt-2">
+                <!-- Botones con URL (compartir-panel) -->
+                <div id="compartir-panel" class="hidden space-y-4">
+                  <a id="link-receta" href="#" target="_blank"
+                     class="w-full px-10 py-5 rounded-2xl primary-gradient text-white font-headline font-bold text-lg flex items-center justify-center gap-3 shadow-xl hover:opacity-90 active:scale-[0.98] transition-all no-underline">
+                    Ver receta en Cookidoo
+                    <span class="material-symbols-outlined">open_in_new</span>
+                  </a>
+                  <a id="btn-whatsapp" href="#" target="_blank"
+                     class="w-full px-8 py-4 rounded-2xl bg-surface-container-high text-on-surface font-headline font-bold text-base flex items-center justify-center gap-3 hover:bg-surface-container-highest transition-colors active:scale-[0.98] no-underline">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.558 4.121 1.531 5.856L.057 23.943l6.204-1.496A11.934 11.934 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.802 9.802 0 01-5.031-1.388l-.361-.214-3.681.888.935-3.576-.235-.368A9.786 9.786 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/></svg>
+                    Compartir por WhatsApp
+                  </a>
+                </div>
+                <button id="btn-nueva" class="w-full px-8 py-4 rounded-2xl bg-white border border-outline-variant/20 text-on-surface-variant font-headline font-bold text-base flex items-center justify-center gap-3 hover:bg-surface-container-low transition-colors active:scale-[0.98]">
+                  <span class="material-symbols-outlined">add_circle</span>
+                  Crear otra receta
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Panel error -->
+        <div id="panel-error" class="hidden flex-grow flex items-center justify-center px-6 py-12">
+          <div class="max-w-md w-full text-center space-y-8">
+            <div class="w-24 h-24 bg-error-container rounded-full flex items-center justify-center mx-auto">
+              <span class="material-symbols-outlined text-error text-5xl">error_outline</span>
+            </div>
+            <div class="space-y-3">
+              <h2 class="text-3xl font-headline font-bold text-on-surface">Algo salió mal</h2>
+              <p id="resultado-mensaje" class="text-on-surface-variant text-lg leading-relaxed"></p>
+            </div>
+            <button id="btn-nueva-error" class="px-10 py-4 rounded-2xl bg-surface-container-high text-on-surface font-headline font-bold flex items-center justify-center gap-3 mx-auto hover:bg-surface-container-highest transition-colors active:scale-[0.98]">
+              <span class="material-symbols-outlined">refresh</span>
+              Intentar de nuevo
+            </button>
+          </div>
+        </div>
+
+        <footer class="py-8 text-center flex-shrink-0">
+          <p class="text-[10px] uppercase tracking-widest text-on-surface-variant/40 font-medium">© 2026 CookidoAI. Powered by Brainstorming Co.</p>
+        </footer>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-stone-50 py-12 border-t border-stone-200/50">
+    <div class="max-w-7xl mx-auto px-8 flex flex-col items-center gap-4">
+      <p class="font-inter text-[10px] uppercase tracking-[0.2em] text-stone-400 text-center">© 2026 CookidoAI. Powered by Brainstorming Co.</p>
+    </div>
+  </footer>
+
+  <!-- Modal login Cookidoo -->
+  <div id="modal-login" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+    <div class="bg-surface-container-lowest rounded-2xl p-8 w-full max-w-sm shadow-2xl border border-outline-variant/20 space-y-6">
+      <div class="space-y-1">
+        <h2 class="text-2xl font-headline font-extrabold tracking-tight text-on-surface">Conectar a Cookidoo</h2>
+        <p class="text-sm text-on-surface-variant">Ingresa tus credenciales de Cookidoo</p>
+      </div>
+      <div class="space-y-3">
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xl">mail</span>
+          <input id="login-email" type="email" placeholder="Email" autocomplete="email"
+            class="w-full pl-10 pr-4 py-3 rounded-xl border border-outline-variant/40 bg-surface-container-low focus:outline-none focus:border-primary text-on-surface font-body text-base"/>
+        </div>
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xl">lock</span>
+          <input id="login-password" type="password" placeholder="Contraseña" autocomplete="current-password"
+            class="w-full pl-10 pr-4 py-3 rounded-xl border border-outline-variant/40 bg-surface-container-low focus:outline-none focus:border-primary text-on-surface font-body text-base"/>
+        </div>
+      </div>
+      <div id="error-login" class="hidden flex items-center gap-2 px-4 py-3 bg-error-container/60 text-on-error-container rounded-xl text-sm font-medium">
+        <span class="material-symbols-outlined text-base flex-shrink-0">error_outline</span>
+        <span id="error-login-msg"></span>
+      </div>
+      <!-- Estado cargando login -->
+      <div id="login-cargando" class="hidden flex items-center gap-3 px-4 py-3 bg-surface-container-low rounded-xl text-sm text-on-surface-variant">
+        <div class="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin flex-shrink-0"></div>
+        <span id="login-cargando-msg">Conectando...</span>
+      </div>
+      <div id="login-acciones" class="flex gap-3">
+        <button id="btn-login-cancelar" class="flex-1 px-4 py-3 rounded-xl bg-surface-container-high text-on-surface font-headline font-bold hover:bg-surface-container-highest transition-colors">
+          Cancelar
+        </button>
+        <button id="btn-login-confirmar" class="flex-1 px-4 py-3 rounded-xl primary-gradient text-white font-headline font-bold shadow-lg shadow-primary/20 active:scale-[0.98] transition-all">
+          Conectar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay cargando -->
+  <div id="overlay-cargando" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex-col items-center justify-center z-50">
+    <div class="w-14 h-14 border-4 border-white/30 border-t-white rounded-full animate-spin mb-4"></div>
+    <p id="overlay-texto" class="text-white text-lg font-headline font-bold">Generando receta...</p>
   </div>
 
   <script src="app.js"></script>

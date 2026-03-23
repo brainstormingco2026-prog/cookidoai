@@ -10,41 +10,56 @@ const RECETAS_CREADAS_URL = `${COOKIDOO_BASE}/created-recipes/es-ES`;
 const PERFIL_DIR = path.join(__dirname, '..', 'chrome-perfil');
 
 // ── Lanzar Chrome real con perfil persistente ─────────────────────────────────
-async function abrirNavegador() {
+async function abrirNavegador({ headless = false } = {}) {
+  const optsExtra = headless
+    ? { headless: true, viewport: { width: 1280, height: 800 }, args: ['--disable-blink-features=AutomationControlled', '--no-sandbox'] }
+    : { headless: false, slowMo: 150, viewport: null, args: ['--start-maximized', '--disable-blink-features=AutomationControlled'] };
+
   return chromium.launchPersistentContext(PERFIL_DIR, {
-    channel: 'chrome',          // Chrome real instalado en el sistema
-    headless: false,
-    slowMo: 150,
+    channel: 'chrome',
     locale: 'es-ES',
-    viewport: null,             // ventana de tamaño real
-    args: ['--start-maximized'],
+    ...optsExtra,
   });
 }
 
-// ── LOGIN MANUAL (primera vez o sesión caducada) ──────────────────────────────
-async function iniciarSesionManual(onStatus) {
+// ── LOGIN CON CREDENCIALES ────────────────────────────────────────────────────
+async function iniciarSesionConCredenciales(email, password, onStatus) {
   const log = (msg) => { console.log(`[Cookidoo] ${msg}`); if (onStatus) onStatus(msg); };
 
-  log('Abriendo Chrome... inicia sesión en Cookidoo');
-  const context = await abrirNavegador();
+  log('Abriendo Chrome para login...');
+  const context = await abrirNavegador({ headless: false });
   const page = context.pages()[0] || await context.newPage();
 
-  await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
-  log('🔐 Inicia sesión en el navegador. Cuando estés dentro de Cookidoo la app continuará...');
+  try {
+    log('Abriendo página de login...');
+    await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    log('URL actual: ' + page.url());
 
-  // Espera hasta que el usuario esté logueado en cookidoo.es (hasta 3 min)
-  await page.waitForURL(`${COOKIDOO_BASE}/**`, { timeout: 180000 });
+    // Verificar que el formulario de login cargó
+    const emailField = await page.$('input[type="email"], input[name="email"], #email, input[name="loginEmail"]');
+    if (!emailField) {
+      throw new Error('Cloudflare bloqueó el acceso en modo background. Intenta cerrar la sesión actual y volver a conectar.');
+    }
 
-  // Asegurarse de que no nos quedamos en una URL de login/ciam
-  await page.waitForFunction(
-    (base) => window.location.href.startsWith(base) && !window.location.href.includes('login') && !window.location.href.includes('ciam'),
-    COOKIDOO_BASE,
-    { timeout: 30000 }
-  );
+    log('Rellenando credenciales...');
+    await page.fill('input[type="email"], input[name="email"], #email, input[name="loginEmail"]', email, { timeout: 10000 });
+    await page.fill('input[type="password"], input[name="password"], #password', password, { timeout: 5000 });
 
-  log('Login detectado ✓ Guardando sesión...');
-  await context.close();
-  log('Sesión guardada en el perfil de Chrome. No necesitarás hacer login de nuevo.');
+    log('Enviando formulario...');
+    await page.click('button[type="submit"]', { timeout: 5000 });
+
+    log('Esperando confirmación de login...');
+    await page.waitForFunction(
+      (base) => window.location.href.startsWith(base) && !window.location.href.includes('login') && !window.location.href.includes('ciam'),
+      COOKIDOO_BASE,
+      { timeout: 60000 }
+    );
+
+    log('Login exitoso ✓ Guardando sesión...');
+  } finally {
+    await context.close();
+    log('Sesión guardada. Ya puedes crear recetas.');
+  }
 }
 
 // ── CREAR RECETA ──────────────────────────────────────────────────────────────
@@ -58,7 +73,7 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus) {
     await iniciarSesionManual(onStatus);
   }
 
-  const context = await abrirNavegador();
+  const context = await abrirNavegador({ headless: true });
   const page = context.pages()[0] || await context.newPage();
 
   try {
@@ -76,7 +91,17 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus) {
     }
 
     log('Sesión activa ✓');
-    await page.screenshot({ path: 'debug_recetas_creadas.png', fullPage: true });
+
+    // ── CERRAR BANNER DE COOKIES ──────────────────────────────────────────────
+    try {
+      const btnCookies = page.locator('#onetrust-accept-btn-handler, button:has-text("Aceptar todo"), button:has-text("Accept All")').first();
+      await btnCookies.waitFor({ state: 'visible', timeout: 5000 });
+      await btnCookies.click();
+      log('Banner de cookies cerrado ✓');
+      await page.waitForTimeout(500);
+    } catch {
+      // No hay banner, continuar
+    }
 
     // ── BOTÓN CREAR RECETA ────────────────────────────────────────────────────
     log('Buscando botón de crear receta...');
@@ -191,7 +216,7 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus) {
       await page.waitForLoadState('networkidle');
     }
 
-    const urlReceta = page.url();
+    const urlReceta = page.url().replace(/\/edit\/.*$/, '');
     await page.screenshot({ path: 'receta_creada.png', fullPage: true });
     log('¡Receta creada correctamente! ✓');
     log(`URL: ${urlReceta}`);
@@ -296,4 +321,39 @@ async function añadirPaso(page, paso, indice, log) {
   }
 }
 
-module.exports = { crearRecetaEnCookidoo, iniciarSesionManual };
+// ── EXTRAER RECETA DESDE URL DE COOKIDOO ──────────────────────────────────────
+async function extraerRecetaDeCookidoo(url, onStatus) {
+  const log = (msg) => { console.log(`[Cookidoo] ${msg}`); if (onStatus) onStatus(msg); };
+
+  log('Abriendo receta...');
+  const context = await abrirNavegador({ headless: true });
+  const page = context.pages()[0] || await context.newPage();
+
+  try {
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+
+    // Extraer texto relevante de la página
+    const contenido = await page.evaluate(() => {
+      // Intentar JSON-LD primero
+      const jsonLd = document.querySelector('script[type="application/ld+json"]');
+      if (jsonLd) return jsonLd.textContent;
+
+      // Fallback: extraer texto del body principal
+      const selectores = [
+        'main', 'article', '[class*="recipe"]', '[class*="receta"]', '#content'
+      ];
+      for (const sel of selectores) {
+        const el = document.querySelector(sel);
+        if (el) return el.innerText;
+      }
+      return document.body.innerText;
+    });
+
+    log('Receta extraída ✓');
+    return contenido;
+  } finally {
+    await context.close();
+  }
+}
+
+module.exports = { crearRecetaEnCookidoo, iniciarSesionConCredenciales, extraerRecetaDeCookidoo };
