@@ -1,0 +1,16 @@
+{
+  "name": "thermo-chatgpt-cookidoo",
+  "version": "1.0.0",
+  "description": "Genera recetas con ChatGPT y las crea automáticamente en Cookidoo",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "openai": "^4.28.0",
+    "playwright": "^1.42.1",
+    "dotenv": "^16.4.4"
+  }
+}
