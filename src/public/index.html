@@ -13,22 +13,43 @@
       <p>Genera recetas con IA y créalas automáticamente en Cookidoo</p>
     </header>
 
-    <!-- PASO 1: Generar receta -->
-    <section id="seccion-generar" class="card">
-      <h2>1. ¿Qué receta quieres?</h2>
-      <div class="input-group">
-        <textarea
-          id="descripcion"
-          placeholder="Ej: Pasta carbonara para 4 personas, pollo al curry con coco, tarta de manzana fácil..."
-          rows="3"
-        ></textarea>
-        <button id="btn-generar" class="btn-primary">Generar con ChatGPT</button>
+    <!-- PANTALLA PRINCIPAL: receta + login en una sola tarjeta -->
+    <section id="seccion-principal" class="card">
+      <div class="principal-grid">
+
+        <!-- Columna izquierda: qué receta -->
+        <div class="principal-col">
+          <h2>¿Qué quieres cocinar?</h2>
+          <textarea
+            id="descripcion"
+            placeholder="Ej: Pasta carbonara para 4 personas, pollo al curry con coco, tarta de manzana fácil..."
+            rows="4"
+          ></textarea>
+          <button id="btn-generar" class="btn-primary btn-full">Generar receta con ChatGPT</button>
+        </div>
+
+        <!-- Separador vertical -->
+        <div class="principal-sep"></div>
+
+        <!-- Columna derecha: login Cookidoo -->
+        <div class="principal-col">
+          <h2>Cuenta Cookidoo</h2>
+          <div id="estado-sesion-ok" class="hidden">
+            <p class="aviso sesion-ok">✓ Sesión activa</p>
+            <button id="btn-cerrar-sesion" class="btn-secondary btn-full">Cerrar sesión</button>
+          </div>
+          <div id="estado-sesion-no">
+            <p class="aviso">La primera vez necesitas hacer login en el navegador para que la app pueda crear recetas por ti.</p>
+            <button id="btn-login-principal" class="btn-success btn-full">Conectar con Cookidoo →</button>
+          </div>
+        </div>
+
       </div>
     </section>
 
     <!-- PASO 2: Revisar receta -->
     <section id="seccion-receta" class="card hidden">
-      <h2>2. Revisa la receta generada</h2>
+      <h2>Revisa la receta generada</h2>
       <div id="receta-preview">
         <div class="receta-header">
           <h3 id="receta-titulo"></h3>
@@ -39,7 +60,6 @@
             <span id="receta-dificultad"></span>
           </div>
         </div>
-
         <div class="receta-columnas">
           <div>
             <h4>Ingredientes</h4>
@@ -51,43 +71,24 @@
           </div>
         </div>
       </div>
-
       <div class="acciones">
         <button id="btn-regenerar" class="btn-secondary">Regenerar</button>
-        <button id="btn-aceptar" class="btn-primary">Aceptar y crear en Cookidoo →</button>
+        <button id="btn-aceptar" class="btn-primary">Crear en Cookidoo →</button>
       </div>
     </section>
 
-    <!-- PASO 3: Login Cookidoo -->
-    <section id="seccion-login" class="card hidden">
-      <h2>3. Conectar con Cookidoo</h2>
-
-      <!-- Sin sesión guardada -->
-      <div id="login-manual-panel">
-        <p class="aviso">Para evitar bloqueos de seguridad, harás login tú mismo en el navegador que se abrirá. La sesión se guarda para no repetir este paso.</p>
-        <div class="acciones">
-          <button id="btn-volver" class="btn-secondary">Volver</button>
-          <button id="btn-login-manual" class="btn-success">Abrir Cookidoo y hacer login →</button>
+    <!-- PROGRESO: frases de cocina + tiempo estimado -->
+    <section id="seccion-progreso" class="card hidden">
+      <div class="progreso-centro">
+        <div class="progreso-icono">🍳</div>
+        <h2 id="frase-cocina">Preparando los ingredientes...</h2>
+        <p id="tiempo-restante" class="tiempo-restante">Tiempo estimado: calculando...</p>
+        <div class="barra-progreso-wrap">
+          <div id="barra-progreso" class="barra-progreso"></div>
         </div>
       </div>
 
-      <!-- Con sesión ya guardada -->
-      <div id="login-sesion-panel" class="hidden">
-        <p class="aviso sesion-ok">✓ Sesión de Cookidoo activa. Puedes crear la receta directamente.</p>
-        <div class="acciones">
-          <button id="btn-volver2" class="btn-secondary">Volver</button>
-          <button id="btn-crear" class="btn-success">Crear en Cookidoo</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- LOG DE PROGRESO -->
-    <section id="seccion-log" class="card hidden">
-      <h2>Progreso</h2>
-      <div id="log-container">
-        <div id="log-mensajes"></div>
-        <div id="log-spinner" class="spinner"></div>
-      </div>
+      <!-- Resultado final (oculto hasta completar) -->
       <div id="resultado" class="hidden">
         <p id="resultado-mensaje"></p>
         <div id="compartir-panel" class="hidden">

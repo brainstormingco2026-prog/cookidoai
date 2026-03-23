@@ -69,6 +69,12 @@ app.get('/api/sesion', (req, res) => {
   res.json({ activa: fs.existsSync(PERFIL_DIR) });
 });
 
+// POST /api/cerrar-sesion — borra el perfil de Chrome guardado
+app.post('/api/cerrar-sesion', (req, res) => {
+  if (fs.existsSync(PERFIL_DIR)) fs.rmSync(PERFIL_DIR, { recursive: true, force: true });
+  res.json({ ok: true });
+});
+
 // POST /api/login-manual — abre navegador para que el usuario haga login
 app.post('/api/login-manual', async (req, res) => {
   res.json({ ok: true, mensaje: 'Abriendo navegador... inicia sesión en Cookidoo y la app continuará automáticamente' });

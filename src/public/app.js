@@ -1,65 +1,112 @@
 let recetaActual = null;
 
-// Elementos del DOM
-const secGenerar = document.getElementById('seccion-generar');
-const secReceta = document.getElementById('seccion-receta');
-const secLogin = document.getElementById('seccion-login');
-const secLog = document.getElementById('seccion-log');
-const overlay = document.getElementById('overlay-cargando');
-const overlayTexto = document.getElementById('overlay-texto');
+// Frases de cocina para la pantalla de progreso
+const FRASES = [
+  'Precalentando el Thermomix...',
+  'Picando los ingredientes finamente...',
+  'Mezclando a velocidad perfecta...',
+  'Añadiendo el toque secreto del chef...',
+  'Dejando reposar los sabores...',
+  'Ajustando la temperatura...',
+  'Incorporando ingredientes con cuidado...',
+  'El aroma ya se siente en la cocina...',
+  'Removiendo para que no se pegue...',
+  'Probando el punto de sazón...',
+  'Dando los últimos retoques...',
+  'Emplatando con arte...',
+  'Casi listo, paciencia de buen cocinero...',
+  'El Thermomix trabajando a pleno rendimiento...',
+  'Guardando los secretos de la receta...',
+];
 
-// —— SSE: escucha eventos del servidor ——
+const TIEMPO_ESTIMADO = 60; // segundos estimados para el proceso completo
+
+// Elementos
+const secPrincipal = document.getElementById('seccion-principal');
+const secReceta    = document.getElementById('seccion-receta');
+const secProgreso  = document.getElementById('seccion-progreso');
+const overlay      = document.getElementById('overlay-cargando');
+
+// —— SSE ——
 const eventSource = new EventSource('/api/eventos');
 eventSource.onerror = () => console.warn('SSE: reconectando...');
 eventSource.onmessage = (e) => {
   const datos = JSON.parse(e.data);
 
   if (datos.tipo === 'progreso') {
-    añadirLog(datos.mensaje);
+    // No mostramos el log técnico, solo actualizamos internamente
+    console.log('[progreso]', datos.mensaje);
   }
 
   if (datos.tipo === 'completado') {
-    añadirLog('✅ ' + datos.mensaje, 'ok');
-    mostrarResultado(datos.mensaje, 'exito');
+    detenerProgreso();
+    mostrarResultado('¡Receta creada en Cookidoo! 🎉', 'exito');
     if (datos.url) mostrarCompartir(datos.url);
   }
 
   if (datos.tipo === 'error') {
-    añadirLog('❌ ' + datos.mensaje, 'error');
+    detenerProgreso();
     mostrarResultado('Error: ' + datos.mensaje, 'error');
   }
 
   if (datos.tipo === 'sesion-guardada') {
-    añadirLog('✅ ' + datos.mensaje, 'ok');
-    mostrarResultado(datos.mensaje + ' Pulsa "Crear otra receta" para continuar.', 'exito');
+    detenerProgreso();
+    actualizarEstadoSesion(true);
+    mostrarResultado('✓ Sesión guardada. Ya puedes crear recetas.', 'exito');
   }
 };
 
-// —— PASO 1: Generar receta ——
+// —— Estado de sesión al cargar ——
+window.addEventListener('load', async () => {
+  try {
+    const res = await fetch('/api/sesion');
+    const datos = await res.json();
+    actualizarEstadoSesion(datos.activa);
+  } catch {}
+});
+
+function actualizarEstadoSesion(activa) {
+  document.getElementById('estado-sesion-ok').classList.toggle('hidden', !activa);
+  document.getElementById('estado-sesion-no').classList.toggle('hidden', activa);
+}
+
+// —— Login desde pantalla principal ——
+document.getElementById('btn-login-principal').addEventListener('click', async () => {
+  iniciarProgreso('Abriendo Cookidoo para hacer login...');
+  ocultar(secPrincipal);
+  mostrar(secProgreso);
+
+  try {
+    await fetch('/api/login-manual', { method: 'POST' });
+  } catch (err) {
+    detenerProgreso();
+    mostrarResultado('Error de conexión: ' + err.message, 'error');
+  }
+});
+
+document.getElementById('btn-cerrar-sesion').addEventListener('click', async () => {
+  await fetch('/api/cerrar-sesion', { method: 'POST' });
+  actualizarEstadoSesion(false);
+});
+
+// —— Generar receta ——
 document.getElementById('btn-generar').addEventListener('click', async () => {
   const descripcion = document.getElementById('descripcion').value.trim();
-  if (!descripcion) {
-    alert('Escribe qué receta quieres generar');
-    return;
-  }
+  if (!descripcion) { alert('Escribe qué receta quieres generar'); return; }
 
   mostrarOverlay('Generando receta con ChatGPT...');
-
   try {
     const res = await fetch('/api/generar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ descripcion }),
     });
-
     const datos = await res.json();
-
     if (!res.ok) throw new Error(datos.error);
-
     recetaActual = datos.receta;
     mostrarReceta(datos.receta);
+    ocultar(secPrincipal);
     mostrar(secReceta);
-    ocultar(secGenerar);
   } catch (err) {
     alert('Error: ' + err.message);
   } finally {
@@ -67,68 +114,29 @@ document.getElementById('btn-generar').addEventListener('click', async () => {
   }
 });
 
-// —— PASO 2: Revisar receta ——
+// —— Revisar receta ——
 document.getElementById('btn-regenerar').addEventListener('click', () => {
   ocultar(secReceta);
-  mostrar(secGenerar);
+  mostrar(secPrincipal);
   recetaActual = null;
 });
 
 document.getElementById('btn-aceptar').addEventListener('click', async () => {
-  ocultar(secReceta);
-  mostrar(secLogin);
+  // Verificar sesión antes de continuar
+  const res = await fetch('/api/sesion');
+  const { activa } = await res.json();
 
-  // Comprobar si ya hay sesión guardada
-  try {
-    const res = await fetch('/api/sesion');
-    const datos = await res.json();
-    if (datos.activa) {
-      ocultar(document.getElementById('login-manual-panel'));
-      mostrar(document.getElementById('login-sesion-panel'));
-    } else {
-      mostrar(document.getElementById('login-manual-panel'));
-      ocultar(document.getElementById('login-sesion-panel'));
-    }
-  } catch { /* muestra el panel de login manual por defecto */ }
-});
-
-// —— PASO 3: Login y crear ——
-document.getElementById('btn-volver').addEventListener('click', () => {
-  ocultar(secLogin);
-  mostrar(secReceta);
-});
-
-document.getElementById('btn-volver2').addEventListener('click', () => {
-  ocultar(secLogin);
-  mostrar(secReceta);
-});
-
-// Login manual: abre el navegador para que el usuario haga login en Cookidoo
-document.getElementById('btn-login-manual').addEventListener('click', async () => {
-  document.getElementById('log-mensajes').innerHTML = '';
-  document.getElementById('resultado').classList.add('hidden');
-  document.getElementById('log-spinner').classList.remove('hidden');
-  ocultar(secLogin);
-  mostrar(secLog);
-  añadirLog('Abriendo navegador de Cookidoo...');
-
-  try {
-    await fetch('/api/login-manual', { method: 'POST' });
-    // El progreso llega por SSE (sesion-guardada o error)
-  } catch (err) {
-    añadirLog('Error: ' + err.message, 'error');
-    mostrarResultado('Error de conexión', 'error');
+  if (!activa) {
+    const confirmar = confirm('No tienes sesión de Cookidoo activa. ¿Quieres conectarte ahora?');
+    if (!confirmar) return;
+    ocultar(secReceta);
+    mostrar(secPrincipal);
+    return;
   }
-});
 
-// Crear receta (sesión ya activa)
-document.getElementById('btn-crear').addEventListener('click', async () => {
-  document.getElementById('log-mensajes').innerHTML = '';
-  document.getElementById('resultado').classList.add('hidden');
-  document.getElementById('compartir-panel').classList.add('hidden');
-  document.getElementById('log-spinner').classList.remove('hidden');
-  ocultar(secLogin);
-  mostrar(secLog);
+  iniciarProgreso();
+  ocultar(secReceta);
+  mostrar(secProgreso);
 
   try {
     await fetch('/api/crear', {
@@ -137,20 +145,84 @@ document.getElementById('btn-crear').addEventListener('click', async () => {
       body: JSON.stringify({ receta: recetaActual }),
     });
   } catch (err) {
-    añadirLog('Error de conexión: ' + err.message, 'error');
-    mostrarResultado('Error de conexión', 'error');
+    detenerProgreso();
+    mostrarResultado('Error de conexión: ' + err.message, 'error');
   }
 });
 
-// —— Botón "Crear otra receta" ——
+// —— Nueva receta ——
 document.getElementById('btn-nueva').addEventListener('click', () => {
   recetaActual = null;
   document.getElementById('descripcion').value = '';
-  ocultar(secLog);
+  ocultar(secProgreso);
   ocultar(secReceta);
-  ocultar(secLogin);
-  mostrar(secGenerar);
+  mostrar(secPrincipal);
+  actualizarEstadoSesion; // refresca
+  fetch('/api/sesion').then(r => r.json()).then(d => actualizarEstadoSesion(d.activa));
 });
+
+// —— PROGRESO ANIMADO ——
+let progresoInterval = null;
+let tiempoTranscurrido = 0;
+let fraseIndex = 0;
+
+function iniciarProgreso(fraseInicial) {
+  tiempoTranscurrido = 0;
+  fraseIndex = 0;
+
+  const frase = document.getElementById('frase-cocina');
+  const tiempo = document.getElementById('tiempo-restante');
+  const barra  = document.getElementById('barra-progreso');
+  const icono  = document.getElementById('progreso-icono') || document.querySelector('.progreso-icono');
+  const resultado = document.getElementById('resultado');
+
+  resultado.classList.add('hidden');
+  document.getElementById('compartir-panel').classList.add('hidden');
+  document.querySelector('.progreso-centro').classList.remove('hidden');
+
+  frase.textContent = fraseInicial || FRASES[0];
+  tiempo.textContent = `Tiempo estimado: ${TIEMPO_ESTIMADO} segundos`;
+  barra.style.width = '0%';
+
+  const iconos = ['🍳', '🥘', '🍲', '🧑‍🍳', '⏱️', '🌿', '🔪', '🥄'];
+  let iconoIdx = 0;
+
+  progresoInterval = setInterval(() => {
+    tiempoTranscurrido++;
+
+    // Actualizar barra (máx 95% hasta que llegue el completado real)
+    const pct = Math.min(95, (tiempoTranscurrido / TIEMPO_ESTIMADO) * 100);
+    barra.style.width = pct + '%';
+
+    // Tiempo restante
+    const restante = Math.max(0, TIEMPO_ESTIMADO - tiempoTranscurrido);
+    tiempo.textContent = restante > 0
+      ? `Tiempo estimado: ${restante} segundo${restante !== 1 ? 's' : ''}`
+      : 'Casi listo...';
+
+    // Cambiar frase cada 8 segundos
+    if (tiempoTranscurrido % 8 === 0) {
+      fraseIndex = (fraseIndex + 1) % FRASES.length;
+      frase.style.opacity = '0';
+      setTimeout(() => {
+        frase.textContent = FRASES[fraseIndex];
+        frase.style.opacity = '1';
+      }, 400);
+    }
+
+    // Cambiar icono cada 5 segundos
+    if (tiempoTranscurrido % 5 === 0) {
+      iconoIdx = (iconoIdx + 1) % iconos.length;
+      icono.textContent = iconos[iconoIdx];
+    }
+  }, 1000);
+}
+
+function detenerProgreso() {
+  if (progresoInterval) { clearInterval(progresoInterval); progresoInterval = null; }
+  document.getElementById('barra-progreso').style.width = '100%';
+  document.querySelector('.progreso-centro').classList.add('hidden');
+}
 
 // —— Helpers ——
 function mostrarReceta(r) {
@@ -160,26 +232,14 @@ function mostrarReceta(r) {
   document.getElementById('receta-tiempo').textContent = `⏱ ${(r.tiempo_preparacion || 0) + (r.tiempo_coccion || 0)} min`;
   document.getElementById('receta-dificultad').textContent = `📊 ${r.dificultad}`;
 
-  const ulIng = document.getElementById('receta-ingredientes');
-  ulIng.innerHTML = r.ingredientes
-    .map((i) => `<li><strong>${i.cantidad} ${i.unidad}</strong> ${i.nombre}</li>`)
-    .join('');
+  document.getElementById('receta-ingredientes').innerHTML = r.ingredientes
+    .map(i => `<li><strong>${i.cantidad} ${i.unidad}</strong> ${i.nombre}</li>`).join('');
 
-  const olPasos = document.getElementById('receta-pasos');
-  olPasos.innerHTML = r.pasos.map((p) => `<li>${p}</li>`).join('');
-}
-
-function añadirLog(mensaje, tipo = '') {
-  const log = document.getElementById('log-mensajes');
-  const div = document.createElement('div');
-  div.className = `log-linea ${tipo}`;
-  div.textContent = `> ${mensaje}`;
-  log.appendChild(div);
-  log.scrollTop = log.scrollHeight;
+  document.getElementById('receta-pasos').innerHTML = r.pasos
+    .map(p => `<li>${p}</li>`).join('');
 }
 
 function mostrarResultado(mensaje, tipo) {
-  document.getElementById('log-spinner').classList.add('hidden');
   const resultado = document.getElementById('resultado');
   resultado.classList.remove('hidden');
   const p = document.getElementById('resultado-mensaje');
@@ -188,24 +248,17 @@ function mostrarResultado(mensaje, tipo) {
 }
 
 function mostrarCompartir(url) {
-  const panel = document.getElementById('compartir-panel');
-  panel.classList.remove('hidden');
-
+  document.getElementById('compartir-panel').classList.remove('hidden');
   document.getElementById('link-receta').href = url;
-
   const titulo = recetaActual?.titulo || 'Mi receta';
-  const mensaje = `¡Mira esta receta que hice con Thermomix! 🍳\n*${titulo}*\n${url}`;
-  document.getElementById('btn-whatsapp').href = `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
+  const msg = `¡Mira esta receta que hice con Thermomix! 🍳\n*${titulo}*\n${url}`;
+  document.getElementById('btn-whatsapp').href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
 }
 
 function mostrarOverlay(texto) {
-  overlayTexto.textContent = texto;
+  document.getElementById('overlay-texto').textContent = texto;
   overlay.classList.remove('hidden');
 }
-
-function ocultarOverlay() {
-  overlay.classList.add('hidden');
-}
-
+function ocultarOverlay() { overlay.classList.add('hidden'); }
 function mostrar(el) { el.classList.remove('hidden'); }
 function ocultar(el) { el.classList.add('hidden'); }
