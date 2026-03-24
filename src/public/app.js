@@ -70,6 +70,34 @@ eventSource.onmessage = (e) => {
   }
 };
 
+// —— Menú usuario ——
+window.addEventListener('load', async () => {
+  try {
+    const res = await fetch('/api/auth/me');
+    if (!res.ok) return;
+    const { nombre, email } = await res.json();
+    document.getElementById('user-nombre').textContent = nombre || '';
+    document.getElementById('user-email').textContent = email || '';
+    document.getElementById('user-avatar').textContent = (nombre || '?')[0].toUpperCase();
+  } catch {}
+});
+
+// Actualizar email en dropdown cuando se carga la sesión Cookidoo
+const _origActualizarEstadoSesion = actualizarEstadoSesion;
+
+document.getElementById('btn-user-menu').addEventListener('click', (e) => {
+  e.stopPropagation();
+  document.getElementById('user-dropdown').classList.toggle('hidden');
+});
+document.addEventListener('click', () => {
+  document.getElementById('user-dropdown').classList.add('hidden');
+});
+
+document.getElementById('btn-logout').addEventListener('click', async () => {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  location.href = '/login';
+});
+
 // —— Estado de sesión al cargar ——
 window.addEventListener('load', async () => {
   try {
@@ -223,6 +251,7 @@ document.getElementById('btn-foto').addEventListener('click', async () => {
     if (!res.ok) throw new Error(datos.error);
     recetaActual = datos.receta;
     mostrarReceta(datos.receta);
+    buscarImagenReceta(datos.receta.titulo);
     ocultar(secPrincipal);
     mostrar(secReceta);
   } catch (err) {
@@ -250,6 +279,7 @@ document.getElementById('btn-adaptar').addEventListener('click', async () => {
     if (!res.ok) throw new Error(datos.error);
     recetaActual = datos.receta;
     mostrarReceta(datos.receta);
+    buscarImagenReceta(datos.receta.titulo);
     ocultar(secPrincipal);
     mostrar(secReceta);
   } catch (err) {
@@ -277,6 +307,7 @@ document.getElementById('btn-generar').addEventListener('click', async () => {
     if (!res.ok) throw new Error(datos.error);
     recetaActual = datos.receta;
     mostrarReceta(datos.receta);
+    buscarImagenReceta(datos.receta.titulo);
     ocultar(secPrincipal);
     mostrar(secReceta);
   } catch (err) {
@@ -421,6 +452,27 @@ function detenerProgreso() {
 // —— Helpers ——
 const INGREDIENT_ICONS = ['set_meal','forest','layers','egg_alt','eco','grain','water_drop','breakfast_dining','cookie','lunch_dining','spa','liquor'];
 
+async function buscarImagenReceta(titulo) {
+  const wrap = document.getElementById('receta-imagen-wrap');
+  const placeholder = document.getElementById('receta-imagen-placeholder');
+  wrap.classList.add('hidden');
+  placeholder.classList.remove('hidden');
+  try {
+    const res = await fetch(`/api/imagen?q=${encodeURIComponent(titulo)}`);
+    const datos = await res.json();
+    if (datos.imagen) {
+      document.getElementById('receta-imagen').src = datos.imagen;
+      document.getElementById('receta-imagen').alt = titulo;
+      document.getElementById('receta-imagen-autor-nombre').textContent = datos.autor || '';
+      document.getElementById('receta-imagen-autor').href = datos.autorUrl || '#';
+      placeholder.classList.add('hidden');
+      wrap.classList.remove('hidden');
+    }
+  } catch (err) {
+    console.warn('No se pudo cargar imagen:', err.message);
+  }
+}
+
 function mostrarReceta(r) {
   document.getElementById('receta-titulo').textContent = r.titulo;
   document.getElementById('receta-descripcion').textContent = r.descripcion;
@@ -488,6 +540,97 @@ function ocultarOverlay() {
 }
 function mostrar(el) { el.classList.remove('hidden'); }
 function ocultar(el) { el.classList.add('hidden'); }
+
+// —— Editor de receta ——
+const secEditar = document.getElementById('seccion-editar');
+
+function abrirEditor() {
+  const r = recetaActual;
+  document.getElementById('edit-titulo').value = r.titulo || '';
+  document.getElementById('edit-descripcion').value = r.descripcion || '';
+  document.getElementById('edit-porciones').value = r.porciones || '';
+  document.getElementById('edit-tiempo-prep').value = r.tiempo_preparacion || 0;
+  document.getElementById('edit-tiempo-coccion').value = r.tiempo_coccion || 0;
+
+  const sel = document.getElementById('edit-dificultad');
+  sel.value = r.dificultad || 'Media';
+  if (!sel.value) sel.value = 'Media';
+
+  document.getElementById('edit-ingredientes').innerHTML = '';
+  (r.ingredientes || []).forEach(ing => agregarFilaIngrediente(ing));
+
+  document.getElementById('edit-pasos').innerHTML = '';
+  (r.pasos || []).forEach(paso => agregarFilaPaso(paso));
+
+  ocultar(secReceta);
+  mostrar(secEditar);
+  secEditar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function agregarFilaIngrediente(ing = {}) {
+  const li = document.createElement('li');
+  li.className = 'flex gap-2 items-center';
+  li.innerHTML = `
+    <input type="text" placeholder="Cant." value="${escHtml(String(ing.cantidad || ''))}" class="w-20 bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary edit-ing-cantidad"/>
+    <input type="text" placeholder="Unidad" value="${escHtml(ing.unidad || '')}" class="w-24 bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary edit-ing-unidad"/>
+    <input type="text" placeholder="Ingrediente" value="${escHtml(ing.nombre || '')}" class="flex-1 bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary edit-ing-nombre"/>
+    <button type="button" class="text-on-surface-variant hover:text-error transition-colors btn-eliminar-ing">
+      <span class="material-symbols-outlined text-base">delete</span>
+    </button>
+  `;
+  li.querySelector('.btn-eliminar-ing').addEventListener('click', () => li.remove());
+  document.getElementById('edit-ingredientes').appendChild(li);
+}
+
+function agregarFilaPaso(texto = '') {
+  const lista = document.getElementById('edit-pasos');
+  const li = document.createElement('li');
+  li.className = 'flex gap-3 items-start';
+  const num = lista.children.length + 1;
+  li.innerHTML = `
+    <span class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant font-bold text-sm flex-shrink-0 mt-2">${num}</span>
+    <textarea rows="3" class="flex-1 bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-primary edit-paso-texto">${escHtml(texto)}</textarea>
+    <button type="button" class="text-on-surface-variant hover:text-error transition-colors mt-2 btn-eliminar-paso">
+      <span class="material-symbols-outlined text-base">delete</span>
+    </button>
+  `;
+  li.querySelector('.btn-eliminar-paso').addEventListener('click', () => {
+    li.remove();
+    document.querySelectorAll('#edit-pasos li span').forEach((el, i) => { el.textContent = i + 1; });
+  });
+  lista.appendChild(li);
+}
+
+function guardarEdicion() {
+  recetaActual = {
+    ...recetaActual,
+    titulo: document.getElementById('edit-titulo').value.trim(),
+    descripcion: document.getElementById('edit-descripcion').value.trim(),
+    porciones: parseInt(document.getElementById('edit-porciones').value) || recetaActual.porciones,
+    tiempo_preparacion: parseInt(document.getElementById('edit-tiempo-prep').value) || 0,
+    tiempo_coccion: parseInt(document.getElementById('edit-tiempo-coccion').value) || 0,
+    dificultad: document.getElementById('edit-dificultad').value,
+    ingredientes: Array.from(document.querySelectorAll('#edit-ingredientes li')).map(li => ({
+      cantidad: li.querySelector('.edit-ing-cantidad').value.trim(),
+      unidad: li.querySelector('.edit-ing-unidad').value.trim(),
+      nombre: li.querySelector('.edit-ing-nombre').value.trim(),
+    })).filter(ing => ing.nombre),
+    pasos: Array.from(document.querySelectorAll('#edit-pasos .edit-paso-texto')).map(t => t.value.trim()).filter(Boolean),
+  };
+  mostrarReceta(recetaActual);
+  ocultar(secEditar);
+  mostrar(secReceta);
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.getElementById('btn-editar').addEventListener('click', abrirEditor);
+document.getElementById('btn-guardar-edicion').addEventListener('click', guardarEdicion);
+document.getElementById('btn-cancelar-edicion').addEventListener('click', () => { ocultar(secEditar); mostrar(secReceta); });
+document.getElementById('edit-add-ingrediente').addEventListener('click', () => agregarFilaIngrediente());
+document.getElementById('edit-add-paso').addEventListener('click', () => agregarFilaPaso());
 
 function mostrarErrorInline(id, msg) {
   const el = document.getElementById(id);

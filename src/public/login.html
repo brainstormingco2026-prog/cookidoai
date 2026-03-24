@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>CookidoAI — Acceso</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#970012", "primary-container": "#c1121f",
+            "secondary": "#2c694e", "secondary-container": "#aeeecb",
+            "secondary-fixed": "#b1f0ce", "on-secondary-fixed-variant": "#0e5138",
+            "surface": "#fff8f1", "surface-container-low": "#fff2d9",
+            "surface-container": "#faedd2", "surface-container-high": "#f4e7cc",
+            "surface-container-lowest": "#ffffff", "surface-container-highest": "#eee1c7",
+            "on-surface": "#211b0b", "on-surface-variant": "#5c403d",
+            "outline-variant": "#e5bdb9", "background": "#fff8f1",
+            "error": "#ba1a1a", "error-container": "#ffdad6", "on-error-container": "#93000a",
+          },
+          fontFamily: { "headline": ["Manrope"], "body": ["Inter"] },
+          borderRadius: { "2xl": "1.5rem" },
+        },
+      },
+    }
+  </script>
+  <style>
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .primary-gradient { background: linear-gradient(135deg, #970012 0%, #c1121f 100%); }
+  </style>
+</head>
+<body class="bg-background font-body text-on-surface min-h-screen flex items-center justify-center px-4">
+
+  <div class="w-full max-w-md">
+
+    <!-- Logo -->
+    <div class="text-center mb-10">
+      <h1 class="text-4xl font-headline font-extrabold tracking-tighter text-red-800">CookidoAI</h1>
+      <p class="text-on-surface-variant text-sm mt-1">Recetas para Thermomix en segundos</p>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-surface-container-lowest rounded-2xl shadow-xl border border-outline-variant/20 p-8 space-y-6">
+
+      <!-- Tabs login / registro -->
+      <div class="flex p-1 bg-surface-container-high rounded-xl">
+        <button id="tab-login" onclick="cambiarTab('login')"
+          class="flex-1 py-2 rounded-lg font-headline font-bold text-sm transition-all bg-surface-container-lowest text-on-surface shadow-sm">
+          Iniciar sesión
+        </button>
+        <button id="tab-registro" onclick="cambiarTab('registro')"
+          class="flex-1 py-2 rounded-lg font-headline font-bold text-sm transition-all text-on-surface-variant hover:text-on-surface">
+          Crear cuenta
+        </button>
+      </div>
+
+      <!-- Error inline -->
+      <div id="error-auth" class="hidden flex items-center gap-2 px-4 py-3 bg-error-container/60 text-on-error-container rounded-xl text-sm font-medium">
+        <span class="material-symbols-outlined text-base flex-shrink-0">error_outline</span>
+        <span id="error-auth-msg"></span>
+      </div>
+
+      <!-- Éxito inline -->
+      <div id="exito-auth" class="hidden flex items-center gap-2 px-4 py-3 bg-secondary-container/50 text-on-secondary-fixed-variant rounded-xl text-sm font-medium">
+        <span class="material-symbols-outlined text-base flex-shrink-0">check_circle</span>
+        <span id="exito-auth-msg"></span>
+      </div>
+
+      <!-- Formulario -->
+      <form id="form-auth" class="space-y-4" onsubmit="return false;">
+
+        <!-- Nombre (solo registro) -->
+        <div id="campo-nombre" class="hidden relative">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xl">person</span>
+          <input id="nombre" type="text" placeholder="Nombre" autocomplete="name"
+            class="w-full pl-10 pr-4 py-3 rounded-xl border border-outline-variant/40 bg-surface-container-low focus:outline-none focus:border-primary text-on-surface text-base"/>
+        </div>
+
+        <!-- Email -->
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xl">mail</span>
+          <input id="email" type="email" placeholder="Email" autocomplete="email"
+            class="w-full pl-10 pr-4 py-3 rounded-xl border border-outline-variant/40 bg-surface-container-low focus:outline-none focus:border-primary text-on-surface text-base"/>
+        </div>
+
+        <!-- Contraseña -->
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xl">lock</span>
+          <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password"
+            class="w-full pl-10 pr-4 py-3 rounded-xl border border-outline-variant/40 bg-surface-container-low focus:outline-none focus:border-primary text-on-surface text-base"/>
+        </div>
+
+        <!-- Confirmar contraseña (solo registro) -->
+        <div id="campo-confirmar" class="hidden relative">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xl">lock_reset</span>
+          <input id="confirmar" type="password" placeholder="Confirmar contraseña" autocomplete="new-password"
+            class="w-full pl-10 pr-4 py-3 rounded-xl border border-outline-variant/40 bg-surface-container-low focus:outline-none focus:border-primary text-on-surface text-base"/>
+        </div>
+
+        <button id="btn-submit" type="submit"
+          class="w-full px-8 py-4 rounded-2xl primary-gradient text-white font-headline font-bold text-base shadow-lg shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+          <span id="btn-texto">Iniciar sesión</span>
+          <div id="btn-spinner" class="hidden w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+        </button>
+
+      </form>
+    </div>
+
+    <p class="text-center text-xs text-on-surface-variant/50 mt-8">© 2026 CookidoAI. Powered by Brainstorming Co.</p>
+  </div>
+
+  <script>
+    let modoActual = 'login';
+
+    function cambiarTab(modo) {
+      modoActual = modo;
+      const esRegistro = modo === 'registro';
+
+      document.getElementById('campo-nombre').classList.toggle('hidden', !esRegistro);
+      document.getElementById('campo-confirmar').classList.toggle('hidden', !esRegistro);
+      document.getElementById('btn-texto').textContent = esRegistro ? 'Crear cuenta' : 'Iniciar sesión';
+
+      document.getElementById('tab-login').className = `flex-1 py-2 rounded-lg font-headline font-bold text-sm transition-all ${!esRegistro ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`;
+      document.getElementById('tab-registro').className = `flex-1 py-2 rounded-lg font-headline font-bold text-sm transition-all ${esRegistro ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`;
+
+      ocultarError();
+      ocultarExito();
+    }
+
+    function mostrarError(msg) {
+      document.getElementById('error-auth-msg').textContent = msg;
+      document.getElementById('error-auth').classList.remove('hidden');
+      document.getElementById('error-auth').classList.add('flex');
+      document.getElementById('exito-auth').classList.add('hidden');
+    }
+    function ocultarError() {
+      document.getElementById('error-auth').classList.add('hidden');
+    }
+    function mostrarExito(msg) {
+      document.getElementById('exito-auth-msg').textContent = msg;
+      document.getElementById('exito-auth').classList.remove('hidden');
+      document.getElementById('exito-auth').classList.add('flex');
+      document.getElementById('error-auth').classList.add('hidden');
+    }
+    function ocultarExito() {
+      document.getElementById('exito-auth').classList.add('hidden');
+    }
+
+    function setLoading(loading) {
+      document.getElementById('btn-spinner').classList.toggle('hidden', !loading);
+      document.getElementById('btn-submit').disabled = loading;
+    }
+
+    document.getElementById('btn-submit').addEventListener('click', async () => {
+      ocultarError();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) { mostrarError('Completa todos los campos'); return; }
+
+      if (modoActual === 'registro') {
+        const nombre = document.getElementById('nombre').value.trim();
+        const confirmar = document.getElementById('confirmar').value;
+        if (!nombre) { mostrarError('Ingresa tu nombre'); return; }
+        if (password !== confirmar) { mostrarError('Las contraseñas no coinciden'); return; }
+        if (password.length < 6) { mostrarError('La contraseña debe tener al menos 6 caracteres'); return; }
+
+        setLoading(true);
+        try {
+          const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, email, password }),
+          });
+          const d = await res.json();
+          if (!res.ok) { mostrarError(d.error); return; }
+          mostrarExito('Cuenta creada. Iniciando sesión...');
+          setTimeout(() => location.href = '/', 1000);
+        } catch { mostrarError('Error de conexión'); }
+        finally { setLoading(false); }
+
+      } else {
+        setLoading(true);
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+          });
+          const d = await res.json();
+          if (!res.ok) { mostrarError(d.error); return; }
+          location.href = '/';
+        } catch { mostrarError('Error de conexión'); }
+        finally { setLoading(false); }
+      }
+    });
+
+    // Enter para enviar
+    document.getElementById('form-auth').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('btn-submit').click();
+    });
+  </script>
+</body>
+</html>

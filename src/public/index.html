@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>CookidoAI</title>
+  <title>CookidoAI — Recetas Thermomix con IA</title>
+  <meta name="description" content="Genera, adapta y sube recetas para Thermomix a Cookidoo automáticamente con inteligencia artificial. Escribe lo que quieres cocinar y CookidoAI hace el resto."/>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -107,8 +108,25 @@
 
   <!-- Header -->
   <nav class="w-full z-50 bg-orange-50/80 backdrop-blur-xl bg-gradient-to-b from-orange-100/20 to-transparent">
-    <div class="flex justify-center items-center h-20 px-8 max-w-full">
+    <div class="flex justify-between items-center h-20 px-8 max-w-full">
+      <div class="w-24"></div>
       <div class="text-3xl font-bold tracking-tighter text-red-800 font-headline">CookidoAI</div>
+      <div class="w-24 flex justify-end relative">
+        <button id="btn-user-menu" class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-surface-container-high transition-colors">
+          <div id="user-avatar" class="w-8 h-8 rounded-full primary-gradient flex items-center justify-center text-white font-headline font-bold text-sm flex-shrink-0">?</div>
+        </button>
+        <!-- Dropdown usuario -->
+        <div id="user-dropdown" class="hidden absolute right-0 top-12 w-56 bg-surface-container-lowest rounded-2xl shadow-xl border border-outline-variant/20 overflow-hidden z-50">
+          <div class="px-4 py-4 border-b border-outline-variant/20">
+            <p id="user-nombre" class="font-headline font-bold text-on-surface text-sm"></p>
+            <p id="user-email" class="text-xs text-on-surface-variant mt-0.5 truncate"></p>
+          </div>
+          <button id="btn-logout" class="w-full flex items-center gap-3 px-4 py-3 text-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-medium">
+            <span class="material-symbols-outlined text-base">logout</span>
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
     </div>
   </nav>
 
@@ -348,6 +366,19 @@
               </div>
             </div>
           </div>
+          <!-- Imagen de la receta -->
+          <div class="lg:col-span-4">
+            <div id="receta-imagen-wrap" class="hidden rounded-2xl overflow-hidden aspect-video lg:aspect-square shadow-lg relative">
+              <img id="receta-imagen" src="" alt="" class="w-full h-full object-cover"/>
+              <a id="receta-imagen-autor" href="#" target="_blank" rel="noopener"
+                 class="absolute bottom-2 right-3 text-[10px] text-white/70 hover:text-white transition-colors">
+                Foto: <span id="receta-imagen-autor-nombre"></span> · Pexels
+              </a>
+            </div>
+            <div id="receta-imagen-placeholder" class="rounded-2xl aspect-video lg:aspect-square bg-surface-container-highest flex items-center justify-center">
+              <span class="material-symbols-outlined text-5xl text-on-surface-variant/30 animate-pulse">image_search</span>
+            </div>
+          </div>
         </section>
 
         <!-- Aviso sesión inactiva -->
@@ -360,10 +391,14 @@
         </div>
 
         <!-- Barra de acciones -->
-        <div class="flex gap-4 mb-12 p-4 bg-surface-container-low rounded-xl">
+        <div class="flex gap-4 mb-12 p-4 bg-surface-container-low rounded-xl flex-wrap">
           <button id="btn-aceptar" class="primary-gradient text-white px-8 py-3 rounded-xl font-headline font-bold flex items-center gap-2 active:scale-95 duration-200 shadow-lg">
             <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">sync_alt</span>
             Crear en Cookidoo
+          </button>
+          <button id="btn-editar" class="bg-surface-container-high text-on-surface px-8 py-3 rounded-xl font-headline font-bold flex items-center gap-2 hover:bg-surface-container-highest transition-colors active:opacity-80">
+            <span class="material-symbols-outlined text-sm">edit</span>
+            Editar
           </button>
           <button id="btn-regenerar" class="bg-surface-container-high text-on-surface px-8 py-3 rounded-xl font-headline font-bold flex items-center gap-2 hover:bg-surface-container-highest transition-colors active:opacity-80">
             <span class="material-symbols-outlined text-sm">refresh</span>
@@ -390,6 +425,79 @@
             </ol>
           </div>
 
+        </div>
+      </div>
+
+      <!-- ── EDITOR DE RECETA ── -->
+      <div id="seccion-editar" class="hidden max-w-7xl mx-auto pb-16">
+        <h2 class="font-headline text-3xl font-extrabold tracking-tight mb-8">Editar receta</h2>
+
+        <!-- Campos básicos -->
+        <div class="bg-surface-container-low rounded-2xl p-6 mb-6 space-y-4">
+          <div>
+            <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Título</label>
+            <input id="edit-titulo" type="text" class="mt-1 w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-on-surface font-headline font-bold text-xl focus:outline-none focus:border-primary"/>
+          </div>
+          <div>
+            <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Descripción</label>
+            <textarea id="edit-descripcion" rows="3" class="mt-1 w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-on-surface resize-none focus:outline-none focus:border-primary"></textarea>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Porciones</label>
+              <input id="edit-porciones" type="number" min="1" class="mt-1 w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:border-primary"/>
+            </div>
+            <div>
+              <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Prep (min)</label>
+              <input id="edit-tiempo-prep" type="number" min="0" class="mt-1 w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:border-primary"/>
+            </div>
+            <div>
+              <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Cocción (min)</label>
+              <input id="edit-tiempo-coccion" type="number" min="0" class="mt-1 w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:border-primary"/>
+            </div>
+            <div>
+              <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Dificultad</label>
+              <select id="edit-dificultad" class="mt-1 w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-on-surface focus:outline-none focus:border-primary">
+                <option>Fácil</option>
+                <option>Media</option>
+                <option>Difícil</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ingredientes -->
+        <div class="bg-surface-container-low rounded-2xl p-6 mb-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-headline text-xl font-bold">Ingredientes</h3>
+            <button id="edit-add-ingrediente" type="button" class="flex items-center gap-1 text-sm text-primary font-bold hover:opacity-70 transition-opacity">
+              <span class="material-symbols-outlined text-base">add_circle</span> Añadir
+            </button>
+          </div>
+          <ul id="edit-ingredientes" class="space-y-2"></ul>
+        </div>
+
+        <!-- Pasos -->
+        <div class="bg-surface-container-low rounded-2xl p-6 mb-8">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-headline text-xl font-bold">Pasos de preparación</h3>
+            <button id="edit-add-paso" type="button" class="flex items-center gap-1 text-sm text-primary font-bold hover:opacity-70 transition-opacity">
+              <span class="material-symbols-outlined text-base">add_circle</span> Añadir paso
+            </button>
+          </div>
+          <ol id="edit-pasos" class="space-y-3"></ol>
+        </div>
+
+        <!-- Acciones -->
+        <div class="flex gap-4 flex-wrap">
+          <button id="btn-guardar-edicion" class="primary-gradient text-white px-8 py-3 rounded-xl font-headline font-bold flex items-center gap-2 active:scale-95 duration-200 shadow-lg">
+            <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+            Guardar cambios
+          </button>
+          <button id="btn-cancelar-edicion" class="bg-surface-container-high text-on-surface px-8 py-3 rounded-xl font-headline font-bold flex items-center gap-2 hover:bg-surface-container-highest transition-colors active:opacity-80">
+            <span class="material-symbols-outlined text-sm">close</span>
+            Cancelar
+          </button>
         </div>
       </div>
 
