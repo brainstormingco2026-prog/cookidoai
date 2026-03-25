@@ -1,16 +1,13 @@
-# Imagen base con Node.js + dependencias de Playwright/Chromium
-FROM mcr.microsoft.com/playwright:v1.42.1-jammy
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
-# Instalar dependencias de Node
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-# Instalar solo Chromium (no Firefox ni WebKit)
-RUN npx playwright install chromium
+# Instalar Chromium + todas sus dependencias del sistema
+RUN npx playwright install --with-deps chromium
 
-# Copiar código fuente
 COPY src/ ./src/
 
 EXPOSE 3000
