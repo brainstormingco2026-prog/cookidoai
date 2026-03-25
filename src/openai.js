@@ -1,9 +1,13 @@
 const OpenAI = require('openai');
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let _client = null;
+function getClient() {
+  if (!_client) _client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return _client;
+}
 
 async function generarReceta(descripcion, detalles = '') {
-  const completion = await client.chat.completions.create({
+  const completion = await getClient().chat.completions.create({
     model: 'gpt-4o',
     response_format: { type: 'json_object' },
     messages: [
@@ -43,7 +47,7 @@ Adapta las instrucciones para Thermomix cuando sea posible (velocidades, tempera
 }
 
 async function adaptarReceta(contenidoOriginal, detalles = '') {
-  const completion = await client.chat.completions.create({
+  const completion = await getClient().chat.completions.create({
     model: 'gpt-4o',
     response_format: { type: 'json_object' },
     messages: [
@@ -80,7 +84,7 @@ Adapta tiempos, temperaturas y velocidades para Thermomix. Mantén los ingredien
 }
 
 async function leerRecetaDeFoto(base64, mimeType, detalles = '') {
-  const completion = await client.chat.completions.create({
+  const completion = await getClient().chat.completions.create({
     model: 'gpt-4o',
     response_format: { type: 'json_object' },
     messages: [
