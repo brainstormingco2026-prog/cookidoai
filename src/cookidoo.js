@@ -6,30 +6,31 @@ const COOKIDOO_BASE = 'https://cookidoo.es';
 const LOGIN_URL = `${COOKIDOO_BASE}/profile/es-ES/login`;
 const RECETAS_CREADAS_URL = `${COOKIDOO_BASE}/created-recipes/es-ES`;
 
-// Directorio del perfil de Chrome persistente (guarda cookies, sesión, etc.)
-const PERFIL_DIR = path.join(__dirname, '..', 'chrome-perfil');
+const BASE_DIR = path.join(__dirname, '..');
 
-// ── Lanzar Chrome real con perfil persistente ─────────────────────────────────
-async function abrirNavegador({ headless = false } = {}) {
-  const isProduction = process.env.NODE_ENV === 'production';
-  const runHeadless = headless || isProduction;
+function getPerfilDir(userId) {
+  return path.join(BASE_DIR, `chrome-perfil-${userId}`);
+}
 
-  const optsExtra = runHeadless
+// ── Lanzar Chrome con perfil persistente por usuario ─────────────────────────
+async function abrirNavegador(perfilDir, { headless = true } = {}) {
+  const optsExtra = headless
     ? { headless: true, viewport: { width: 1280, height: 800 }, args: ['--disable-blink-features=AutomationControlled', '--no-sandbox', '--disable-setuid-sandbox'] }
     : { headless: false, slowMo: 150, viewport: null, args: ['--start-maximized', '--disable-blink-features=AutomationControlled'] };
 
-  return chromium.launchPersistentContext(PERFIL_DIR, {
+  return chromium.launchPersistentContext(perfilDir, {
     locale: 'es-ES',
     ...optsExtra,
   });
 }
 
 // ── LOGIN CON CREDENCIALES ────────────────────────────────────────────────────
-async function iniciarSesionConCredenciales(email, password, onStatus) {
+async function iniciarSesionConCredenciales(email, password, onStatus, userId) {
+  const perfilDir = getPerfilDir(userId);
   const log = (msg) => { console.log(`[Cookidoo] ${msg}`); if (onStatus) onStatus(msg); };
 
   log('Abriendo Chrome para login...');
-  const context = await abrirNavegador({ headless: true });
+  const context = await abrirNavegador(perfilDir, { headless: true });
   const page = context.pages()[0] || await context.newPage();
 
   try {
@@ -65,20 +66,16 @@ async function iniciarSesionConCredenciales(email, password, onStatus) {
 }
 
 // ── CREAR RECETA ──────────────────────────────────────────────────────────────
-async function crearRecetaEnCookidoo(receta, _credenciales, onStatus) {
+async function crearRecetaEnCookidoo(receta, _credenciales, onStatus, userId) {
+  const perfilDir = getPerfilDir(userId);
   const log = (msg) => { console.log(`[Cookidoo] ${msg}`); if (onStatus) onStatus(msg); };
 
-  // Si no hay perfil guardado, hacer login con credenciales de env vars
-  const perfilExiste = fs.existsSync(PERFIL_DIR);
-  if (!perfilExiste) {
-    const email = process.env.COOKIDOO_EMAIL;
-    const password = process.env.COOKIDOO_PASSWORD;
-    if (!email || !password) throw new Error('No hay sesión de Cookidoo activa. Conéctate desde la app primero.');
-    log('Sin sesión guardada, haciendo login automático...');
-    await iniciarSesionConCredenciales(email, password, onStatus);
+  // Si no hay perfil guardado, el usuario debe conectarse primero desde la app
+  if (!fs.existsSync(perfilDir)) {
+    throw new Error('No hay sesión de Cookidoo activa. Conéctate desde la app primero.');
   }
 
-  const context = await abrirNavegador({ headless: true });
+  const context = await abrirNavegador(perfilDir, { headless: true });
   const page = context.pages()[0] || await context.newPage();
 
   try {
@@ -87,14 +84,10 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus) {
 
     // Si nos redirige a login/ciam, sesión caducada → login manual
     if (page.url().includes('login') || page.url().includes('ciam')) {
-      log('Sesión caducada. Re-login automático...');
+      log('Sesión caducada. Reconectate a Cookidoo desde la app.');
       await context.close();
-      fs.rmSync(PERFIL_DIR, { recursive: true, force: true });
-      const email = process.env.COOKIDOO_EMAIL;
-      const password = process.env.COOKIDOO_PASSWORD;
-      if (!email || !password) throw new Error('Sesión caducada y no hay credenciales configuradas para renovarla.');
-      await iniciarSesionConCredenciales(email, password, onStatus);
-      return crearRecetaEnCookidoo(receta, {}, onStatus);
+      fs.rmSync(perfilDir, { recursive: true, force: true });
+      throw new Error('Sesión de Cookidoo caducada. Volvé a conectarte desde la app.');
     }
 
     log('Sesión activa ✓');
@@ -329,11 +322,12 @@ async function añadirPaso(page, paso, indice, log) {
 }
 
 // ── EXTRAER RECETA DESDE URL DE COOKIDOO ──────────────────────────────────────
-async function extraerRecetaDeCookidoo(url, onStatus) {
+async function extraerRecetaDeCookidoo(url, onStatus, userId) {
+  const perfilDir = getPerfilDir(userId || 'anonimo');
   const log = (msg) => { console.log(`[Cookidoo] ${msg}`); if (onStatus) onStatus(msg); };
 
   log('Abriendo receta...');
-  const context = await abrirNavegador({ headless: true });
+  const context = await abrirNavegador(perfilDir, { headless: true });
   const page = context.pages()[0] || await context.newPage();
 
   try {

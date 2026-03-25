@@ -6,7 +6,9 @@ const session = require('express-session');
 const { generarReceta, adaptarReceta, leerRecetaDeFoto } = require('./openai');
 const { crearRecetaEnCookidoo, iniciarSesionConCredenciales, extraerRecetaDeCookidoo } = require('./cookidoo');
 
-const PERFIL_DIR = path.join(__dirname, '..', 'chrome-perfil');
+function getPerfilDir(userId) {
+  return path.join(__dirname, '..', `chrome-perfil-${userId}`);
+}
 
 // ── Usuarios estáticos de prueba ──────────────────────────────────────────────
 const USERS = [
@@ -121,20 +123,21 @@ app.post('/api/generar', async (req, res) => {
   }
 });
 
-const EMAIL_FILE = path.join(PERFIL_DIR, '.email');
-function leerEmailGuardado() {
-  try { return fs.readFileSync(EMAIL_FILE, 'utf8').trim(); } catch { return null; }
+function leerEmailGuardado(userId) {
+  try { return fs.readFileSync(path.join(getPerfilDir(userId), '.email'), 'utf8').trim(); } catch { return null; }
 }
 
 // GET /api/sesion
 app.get('/api/sesion', (req, res) => {
-  const activa = fs.existsSync(PERFIL_DIR);
-  res.json({ activa, email: activa ? leerEmailGuardado() : null });
+  const perfilDir = getPerfilDir(req.session.userId);
+  const activa = fs.existsSync(perfilDir);
+  res.json({ activa, email: activa ? leerEmailGuardado(req.session.userId) : null });
 });
 
 // POST /api/cerrar-sesion
 app.post('/api/cerrar-sesion', (req, res) => {
-  if (fs.existsSync(PERFIL_DIR)) fs.rmSync(PERFIL_DIR, { recursive: true, force: true });
+  const perfilDir = getPerfilDir(req.session.userId);
+  if (fs.existsSync(perfilDir)) fs.rmSync(perfilDir, { recursive: true, force: true });
   res.json({ ok: true });
 });
 
@@ -143,13 +146,15 @@ app.post('/api/login-manual', async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
 
+  const userId = req.session.userId;
   res.json({ ok: true });
 
   iniciarSesionConCredenciales(email, password, (msg) => {
     emitirEvento('progreso', { mensaje: msg });
-  })
+  }, userId)
     .then(() => {
-      if (fs.existsSync(PERFIL_DIR)) fs.writeFileSync(EMAIL_FILE, email);
+      const perfilDir = getPerfilDir(userId);
+      if (fs.existsSync(perfilDir)) fs.writeFileSync(path.join(perfilDir, '.email'), email);
       emitirEvento('sesion-guardada', { mensaje: 'Sesión guardada.', email });
     })
     .catch((err) => emitirEvento('error', { mensaje: err.message }));
@@ -160,7 +165,7 @@ app.post('/api/adaptar', async (req, res) => {
   const { url, detalles } = req.body;
   if (!url) return res.status(400).json({ error: 'URL requerida' });
   try {
-    const contenido = await extraerRecetaDeCookidoo(url);
+    const contenido = await extraerRecetaDeCookidoo(url, null, req.session.userId);
     const receta = await adaptarReceta(contenido, (detalles || '').trim());
     res.json({ ok: true, receta });
   } catch (err) {
@@ -220,7 +225,7 @@ app.post('/api/crear', async (req, res) => {
 
   crearRecetaEnCookidoo(receta, {}, (msg) => {
     emitirEvento('progreso', { mensaje: msg });
-  })
+  }, req.session.userId)
     .then((resultado) => {
       estadoActual.estado = 'completado';
       emitirEvento('completado', { mensaje: '¡Receta creada en Cookidoo!', url: resultado?.url || null });
@@ -232,19 +237,4 @@ app.post('/api/crear', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`\n✅ App corriendo en http://localhost:${PORT}\n`);
-
-  // Auto-login a Cookidoo si hay credenciales en env vars y no hay sesión activa
-  const cookidooEmail = process.env.COOKIDOO_EMAIL;
-  const cookidooPassword = process.env.COOKIDOO_PASSWORD;
-  if (cookidooEmail && cookidooPassword && !fs.existsSync(PERFIL_DIR)) {
-    console.log('🔄 Auto-login a Cookidoo con credenciales configuradas...');
-    iniciarSesionConCredenciales(cookidooEmail, cookidooPassword, console.log)
-      .then(() => {
-        if (fs.existsSync(PERFIL_DIR)) fs.writeFileSync(EMAIL_FILE, cookidooEmail);
-        console.log('✅ Sesión Cookidoo establecida automáticamente');
-      })
-      .catch(err => console.warn(`⚠️  Auto-login Cookidoo falló: ${err.message}`));
-  }
-});
+app.listen(PORT, () => console.log(`\n✅ App corriendo en http://localhost:${PORT}\n`));
