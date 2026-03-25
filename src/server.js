@@ -270,6 +270,8 @@ app.post('/api/crear', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-inicializarDB()
-  .catch((err) => console.warn(`⚠️  Sin base de datos (modo local): ${err.message}`))
-  .finally(() => app.listen(PORT, () => console.log(`\n✅ App corriendo en http://localhost:${PORT}\n`)));
+app.listen(PORT, () => {
+  console.log(`\n✅ App corriendo en http://localhost:${PORT}\n`);
+  inicializarDB()
+    .catch((err) => console.warn(`⚠️  Sin base de datos (modo sin DB): ${err.message}`));
+});
