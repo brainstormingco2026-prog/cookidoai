@@ -232,4 +232,19 @@ app.post('/api/crear', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`\n✅ App corriendo en http://localhost:${PORT}\n`));
+app.listen(PORT, () => {
+  console.log(`\n✅ App corriendo en http://localhost:${PORT}\n`);
+
+  // Auto-login a Cookidoo si hay credenciales en env vars y no hay sesión activa
+  const cookidooEmail = process.env.COOKIDOO_EMAIL;
+  const cookidooPassword = process.env.COOKIDOO_PASSWORD;
+  if (cookidooEmail && cookidooPassword && !fs.existsSync(PERFIL_DIR)) {
+    console.log('🔄 Auto-login a Cookidoo con credenciales configuradas...');
+    iniciarSesionConCredenciales(cookidooEmail, cookidooPassword, console.log)
+      .then(() => {
+        if (fs.existsSync(PERFIL_DIR)) fs.writeFileSync(EMAIL_FILE, cookidooEmail);
+        console.log('✅ Sesión Cookidoo establecida automáticamente');
+      })
+      .catch(err => console.warn(`⚠️  Auto-login Cookidoo falló: ${err.message}`));
+  }
+});

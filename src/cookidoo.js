@@ -68,11 +68,14 @@ async function iniciarSesionConCredenciales(email, password, onStatus) {
 async function crearRecetaEnCookidoo(receta, _credenciales, onStatus) {
   const log = (msg) => { console.log(`[Cookidoo] ${msg}`); if (onStatus) onStatus(msg); };
 
-  // Si no hay perfil guardado, hacer login manual primero
+  // Si no hay perfil guardado, hacer login con credenciales de env vars
   const perfilExiste = fs.existsSync(PERFIL_DIR);
   if (!perfilExiste) {
-    log('Primera vez: necesitas hacer login manual...');
-    await iniciarSesionManual(onStatus);
+    const email = process.env.COOKIDOO_EMAIL;
+    const password = process.env.COOKIDOO_PASSWORD;
+    if (!email || !password) throw new Error('No hay sesión de Cookidoo activa. Conéctate desde la app primero.');
+    log('Sin sesión guardada, haciendo login automático...');
+    await iniciarSesionConCredenciales(email, password, onStatus);
   }
 
   const context = await abrirNavegador({ headless: true });
@@ -84,11 +87,13 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus) {
 
     // Si nos redirige a login/ciam, sesión caducada → login manual
     if (page.url().includes('login') || page.url().includes('ciam')) {
-      log('Sesión caducada. Iniciando login manual...');
+      log('Sesión caducada. Re-login automático...');
       await context.close();
-      // Borra perfil para forzar login limpio
       fs.rmSync(PERFIL_DIR, { recursive: true, force: true });
-      await iniciarSesionManual(onStatus);
+      const email = process.env.COOKIDOO_EMAIL;
+      const password = process.env.COOKIDOO_PASSWORD;
+      if (!email || !password) throw new Error('Sesión caducada y no hay credenciales configuradas para renovarla.');
+      await iniciarSesionConCredenciales(email, password, onStatus);
       return crearRecetaEnCookidoo(receta, {}, onStatus);
     }
 
