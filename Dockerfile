@@ -1,5 +1,5 @@
 # Imagen base con Node.js + dependencias de Playwright/Chromium
-FROM mcr.microsoft.com/playwright:v1.42.1-noble
+FROM mcr.microsoft.com/playwright:v1.42.1-jammy
 
 WORKDIR /app
 
