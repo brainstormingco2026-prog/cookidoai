@@ -57,7 +57,7 @@ app.get('/api/auth/me', (req, res) => {
 // ── Middleware de autenticación ───────────────────────────────────────────────
 function requireAuth(req, res, next) {
   if (req.session.userId) return next();
-  if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'No autenticado' });
+  if (req.originalUrl.startsWith('/api/')) return res.status(401).json({ error: 'No autenticado' });
   res.redirect('/login');
 }
 
