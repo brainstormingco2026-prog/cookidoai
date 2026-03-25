@@ -29,7 +29,7 @@ async function iniciarSesionConCredenciales(email, password, onStatus) {
   const log = (msg) => { console.log(`[Cookidoo] ${msg}`); if (onStatus) onStatus(msg); };
 
   log('Abriendo Chrome para login...');
-  const context = await abrirNavegador({ headless: false });
+  const context = await abrirNavegador({ headless: true });
   const page = context.pages()[0] || await context.newPage();
 
   try {
