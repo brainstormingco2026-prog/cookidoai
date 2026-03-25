@@ -227,8 +227,7 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus, userId) {
     try { await page.screenshot({ path: 'debug_error.png', fullPage: true }); } catch {}
     throw error;
   } finally {
-    await page.waitForTimeout(3000);
-    await context.close();
+    try { await context.close(); } catch {}
   }
 }
 
