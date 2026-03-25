@@ -1,0 +1,8 @@
+node_modules/
+.env
+chrome-perfil/
+*.png
+src/data/
+docs/
+.git/
+.DS_Store

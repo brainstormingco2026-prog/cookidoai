@@ -11,12 +11,14 @@ const PERFIL_DIR = path.join(__dirname, '..', 'chrome-perfil');
 
 // ── Lanzar Chrome real con perfil persistente ─────────────────────────────────
 async function abrirNavegador({ headless = false } = {}) {
-  const optsExtra = headless
-    ? { headless: true, viewport: { width: 1280, height: 800 }, args: ['--disable-blink-features=AutomationControlled', '--no-sandbox'] }
+  const isProduction = process.env.NODE_ENV === 'production';
+  const runHeadless = headless || isProduction;
+
+  const optsExtra = runHeadless
+    ? { headless: true, viewport: { width: 1280, height: 800 }, args: ['--disable-blink-features=AutomationControlled', '--no-sandbox', '--disable-setuid-sandbox'] }
     : { headless: false, slowMo: 150, viewport: null, args: ['--start-maximized', '--disable-blink-features=AutomationControlled'] };
 
   return chromium.launchPersistentContext(PERFIL_DIR, {
-    channel: 'chrome',
     locale: 'es-ES',
     ...optsExtra,
   });
