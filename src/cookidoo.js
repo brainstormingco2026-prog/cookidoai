@@ -14,13 +14,20 @@ function getPerfilDir(userId) {
 
 // ── Lanzar Chrome con perfil persistente por usuario ─────────────────────────
 async function abrirNavegador(perfilDir, { headless = true } = {}) {
-  const optsExtra = headless
-    ? { headless: true, viewport: { width: 1280, height: 800 }, args: ['--disable-blink-features=AutomationControlled', '--no-sandbox', '--disable-setuid-sandbox'] }
-    : { headless: false, slowMo: 150, viewport: null, args: ['--start-maximized', '--disable-blink-features=AutomationControlled'] };
+  const args = [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-blink-features=AutomationControlled',
+    '--disable-features=IsolateOrigins,site-per-process',
+  ];
 
   return chromium.launchPersistentContext(perfilDir, {
+    headless,
     locale: 'es-ES',
-    ...optsExtra,
+    viewport: { width: 1280, height: 800 },
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    args,
+    ignoreDefaultArgs: ['--enable-automation'],
   });
 }
 
@@ -55,8 +62,10 @@ async function iniciarSesionConCredenciales(email, password, onStatus, userId) {
     await page.waitForFunction(
       (base) => window.location.href.startsWith(base) && !window.location.href.includes('login') && !window.location.href.includes('ciam'),
       COOKIDOO_BASE,
-      { timeout: 60000 }
-    );
+      { timeout: 90000 }
+    ).catch(() => {
+      throw new Error('Timeout: Cookidoo no respondió al login. Puede que esté bloqueando el acceso automático — intentá de nuevo.');
+    });
 
     log('Login exitoso ✓ Guardando sesión...');
   } finally {
