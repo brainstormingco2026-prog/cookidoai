@@ -2,13 +2,17 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const { generarReceta, adaptarReceta, leerRecetaDeFoto } = require('./openai');
 const { crearRecetaEnCookidoo, iniciarSesionConCredenciales, extraerRecetaDeCookidoo } = require('./cookidoo');
-const { pool, inicializarDB } = require('./db');
 
 const PERFIL_DIR = path.join(__dirname, '..', 'chrome-perfil');
+
+// ── Usuarios estáticos de prueba ──────────────────────────────────────────────
+const USERS = [
+  { id: '1', nombre: 'Usuario UAT 1', email: 'uat1@cookidoai.com', password: 'uat2025' },
+  { id: '2', nombre: 'Usuario UAT 2', email: 'uat2@cookidoai.com', password: 'uat2025' },
+];
 
 // ── App ───────────────────────────────────────────────────────────────────────
 const app = express();
@@ -26,72 +30,30 @@ app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-app.post('/api/auth/register', async (req, res) => {
-  const { nombre, email, password } = req.body || {};
-  if (!nombre || !email || !password) return res.status(400).json({ error: 'Completa todos los campos' });
-  if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
-
-  try {
-    const existe = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
-    if (existe.rows.length > 0) return res.status(400).json({ error: 'Ya existe una cuenta con ese email' });
-
-    const hash = await bcrypt.hash(password, 10);
-    const result = await pool.query(
-      'INSERT INTO users (nombre, email, password) VALUES ($1, $2, $3) RETURNING id, nombre',
-      [nombre, email.toLowerCase(), hash]
-    );
-    const user = result.rows[0];
-
-    req.session.userId = String(user.id);
-    req.session.nombre = user.nombre;
-    res.json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error al crear cuenta' });
-  }
-});
-
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Completa todos los campos' });
 
-  try {
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase()]);
-    const user = result.rows[0];
-    if (!user) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+  const user = USERS.find(u => u.email === email.toLowerCase() && u.password === password);
+  if (!user) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
 
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
-
-    req.session.userId = String(user.id);
-    req.session.nombre = user.nombre;
-    res.json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error al iniciar sesión' });
-  }
+  req.session.userId = user.id;
+  req.session.nombre = user.nombre;
+  res.json({ ok: true });
 });
 
 app.post('/api/auth/logout', (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
 });
 
-app.get('/api/auth/me', async (req, res) => {
+app.get('/api/auth/me', (req, res) => {
   if (!req.session.userId) return res.status(401).json({ error: 'No autenticado' });
-  try {
-    const result = await pool.query('SELECT email FROM users WHERE id = $1', [req.session.userId]);
-    const user = result.rows[0];
-    res.json({ id: req.session.userId, nombre: req.session.nombre, email: user?.email || '' });
-  } catch (err) {
-    console.error(err);
-    res.json({ id: req.session.userId, nombre: req.session.nombre, email: '' });
-  }
+  const user = USERS.find(u => u.id === req.session.userId);
+  res.json({ id: req.session.userId, nombre: req.session.nombre, email: user?.email || '' });
 });
 
 // ── Middleware de autenticación ───────────────────────────────────────────────
 function requireAuth(req, res, next) {
-  // DB deshabilitada: acceso libre
-  if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('host')) return next();
   if (req.session.userId) return next();
   if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'No autenticado' });
   res.redirect('/login');
@@ -270,8 +232,4 @@ app.post('/api/crear', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`\n✅ App corriendo en http://localhost:${PORT}\n`);
-  inicializarDB()
-    .catch((err) => console.warn(`⚠️  Sin base de datos (modo sin DB): ${err.message}`));
-});
+app.listen(PORT, () => console.log(`\n✅ App corriendo en http://localhost:${PORT}\n`));
