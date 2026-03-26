@@ -16,6 +16,9 @@ const USERS = [
   { id: '2', nombre: 'Usuario UAT 2', email: 'uat2@cookidoai.com', password: 'uat2025' },
 ];
 
+const LIMITE_RECETAS = 10;
+const contadorRecetas = {}; // { userId: número de recetas creadas }
+
 // ── App ───────────────────────────────────────────────────────────────────────
 const app = express();
 app.use(express.json({ limit: '15mb' }));
@@ -220,6 +223,12 @@ app.post('/api/crear', async (req, res) => {
   const { receta } = req.body;
   if (!receta) return res.status(400).json({ error: 'No hay receta para crear' });
 
+  const userId = req.session.userId;
+  const usadas = contadorRecetas[userId] || 0;
+  if (usadas >= LIMITE_RECETAS) {
+    return res.status(403).json({ error: `Límite de ${LIMITE_RECETAS} recetas alcanzado para este usuario de prueba.` });
+  }
+
   estadoActual.estado = 'creando';
   res.json({ ok: true });
 
@@ -227,6 +236,7 @@ app.post('/api/crear', async (req, res) => {
     emitirEvento('progreso', { mensaje: msg });
   }, req.session.userId)
     .then((resultado) => {
+      contadorRecetas[userId] = (contadorRecetas[userId] || 0) + 1;
       estadoActual.estado = 'completado';
       emitirEvento('completado', { mensaje: '¡Receta creada en Cookidoo!', url: resultado?.url || null });
     })
