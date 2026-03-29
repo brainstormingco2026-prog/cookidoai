@@ -224,8 +224,9 @@ app.post('/api/crear', async (req, res) => {
   if (!receta) return res.status(400).json({ error: 'No hay receta para crear' });
 
   const userId = req.session.userId;
+  const sinLimite = new Set(['2']); // usuarios sin restricción de recetas
   const usadas = contadorRecetas[userId] || 0;
-  if (usadas >= LIMITE_RECETAS) {
+  if (!sinLimite.has(userId) && usadas >= LIMITE_RECETAS) {
     return res.status(403).json({ error: `Límite de ${LIMITE_RECETAS} recetas alcanzado para este usuario de prueba.` });
   }
 
