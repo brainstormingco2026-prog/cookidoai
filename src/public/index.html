@@ -197,14 +197,24 @@
             <div class="relative group">
               <div class="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-2xl blur opacity-10 group-focus-within:opacity-25 transition duration-500"></div>
               <div class="relative flex flex-col gap-3 bg-surface-container-lowest border border-transparent focus-within:border-surface-tint/20 rounded-2xl p-3 shadow-xl shadow-on-surface/5 transition-all">
-                <div class="flex items-center px-4 pt-1">
-                  <span class="material-symbols-outlined text-stone-400 mr-3">link</span>
-                  <input
-                    id="url-receta"
-                    class="w-full bg-transparent border-none focus:ring-0 text-base font-body placeholder:text-stone-400 text-on-surface"
-                    placeholder="https://cookidoo.es/recipes/recipe/es-ES/r123456"
-                    type="url"
-                  />
+                <div class="flex items-center gap-2 px-4 pt-1">
+                  <div class="flex items-center flex-1 min-w-0">
+                    <span class="material-symbols-outlined text-stone-400 mr-3">link</span>
+                    <input
+                      id="url-receta"
+                      class="w-full bg-transparent border-none focus:ring-0 text-base font-body placeholder:text-stone-400 text-on-surface"
+                      placeholder="https://cookidoo.es/recipes/recipe/es-ES/r123456"
+                      type="url"
+                    />
+                  </div>
+                  <!-- Preview de la receta (al lado del input) -->
+                  <div id="preview-receta" class="hidden flex-shrink-0 flex items-center gap-2 bg-surface-container rounded-xl p-2 max-w-[180px]">
+                    <img id="preview-imagen" src="" alt="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0" onerror="this.style.display='none'" />
+                    <div class="min-w-0">
+                      <p id="preview-titulo" class="text-xs font-bold text-on-surface line-clamp-2 leading-snug"></p>
+                      <span id="preview-tiempo" class="text-xs text-on-surface-variant flex items-center gap-0.5 mt-0.5"></span>
+                    </div>
+                  </div>
                 </div>
                 <div class="border-t border-outline-variant/20 mx-2"></div>
                 <div class="flex items-start px-4 pb-1">
