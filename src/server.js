@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const session = require('express-session');
 const { generarReceta, adaptarReceta, leerRecetaDeFoto } = require('./openai');
-const { crearRecetaEnCookidoo, iniciarSesionConCredenciales, extraerRecetaDeCookidoo } = require('./cookidoo');
+const { crearRecetaEnCookidoo, iniciarSesionConCredenciales, extraerRecetaDeCookidoo, extraerPreviewReceta, getSessionFile } = require('./cookidoo');
 
 function getPerfilDir(userId) {
   return path.join(__dirname, '..', `chrome-perfil-${userId}`);
@@ -126,21 +126,26 @@ app.post('/api/generar', async (req, res) => {
   }
 });
 
+function getEmailFile(userId) {
+  return path.join(__dirname, '..', `cookido-email-${userId}.txt`);
+}
+
 function leerEmailGuardado(userId) {
-  try { return fs.readFileSync(path.join(getPerfilDir(userId), '.email'), 'utf8').trim(); } catch { return null; }
+  try { return fs.readFileSync(getEmailFile(userId), 'utf8').trim(); } catch { return null; }
 }
 
 // GET /api/sesion
 app.get('/api/sesion', (req, res) => {
-  const perfilDir = getPerfilDir(req.session.userId);
-  const activa = fs.existsSync(perfilDir);
+  const activa = fs.existsSync(getSessionFile(req.session.userId));
   res.json({ activa, email: activa ? leerEmailGuardado(req.session.userId) : null });
 });
 
 // POST /api/cerrar-sesion
 app.post('/api/cerrar-sesion', (req, res) => {
-  const perfilDir = getPerfilDir(req.session.userId);
-  if (fs.existsSync(perfilDir)) fs.rmSync(perfilDir, { recursive: true, force: true });
+  const sf = getSessionFile(req.session.userId);
+  const ef = getEmailFile(req.session.userId);
+  if (fs.existsSync(sf)) fs.unlinkSync(sf);
+  if (fs.existsSync(ef)) fs.unlinkSync(ef);
   res.json({ ok: true });
 });
 
@@ -156,11 +161,23 @@ app.post('/api/login-manual', async (req, res) => {
     emitirEvento('progreso', { mensaje: msg });
   }, userId)
     .then(() => {
-      const perfilDir = getPerfilDir(userId);
-      if (fs.existsSync(perfilDir)) fs.writeFileSync(path.join(perfilDir, '.email'), email);
+      fs.writeFileSync(getEmailFile(userId), email);
       emitirEvento('sesion-guardada', { mensaje: 'Sesión guardada.', email });
     })
     .catch((err) => emitirEvento('error', { mensaje: err.message }));
+});
+
+// GET /api/preview-receta
+app.get('/api/preview-receta', async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).json({ error: 'URL requerida' });
+  try {
+    const preview = await extraerPreviewReceta(url, req.session.userId);
+    res.json({ ok: true, preview });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: `No se pudo cargar la receta: ${err.message}` });
+  }
 });
 
 // POST /api/adaptar
@@ -206,7 +223,7 @@ app.get('/api/imagen', async (req, res) => {
   if (!process.env.PEXELS_API_KEY) return res.status(503).json({ error: 'PEXELS_API_KEY no configurada' });
 
   try {
-    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(q + ' food')}&per_page=1&orientation=landscape`;
+    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=1&orientation=landscape`;
     const r = await fetch(url, { headers: { Authorization: process.env.PEXELS_API_KEY } });
     const datos = await r.json();
     const foto = datos.photos?.[0];

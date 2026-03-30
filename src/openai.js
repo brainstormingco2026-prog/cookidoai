@@ -22,6 +22,7 @@ Devuelve SIEMPRE un JSON con esta estructura exacta:
   "tiempo_preparacion": 15,
   "tiempo_coccion": 30,
   "dificultad": "fácil|media|difícil",
+  "imagen_busqueda": "2-4 English keywords describing the finished dish for a food photo search (e.g. 'creamy rice pudding cinnamon')",
   "ingredientes": [
     { "cantidad": "200", "unidad": "g", "nombre": "harina" },
     { "cantidad": "2", "unidad": "unidades", "nombre": "huevos" }
@@ -63,6 +64,7 @@ Devuelve SIEMPRE un JSON con esta estructura exacta:
   "tiempo_preparacion": 15,
   "tiempo_coccion": 30,
   "dificultad": "fácil|media|difícil",
+  "imagen_busqueda": "2-4 English keywords describing the finished dish for a food photo search (e.g. 'garlic shrimp pasta')",
   "ingredientes": [
     { "cantidad": "200", "unidad": "g", "nombre": "harina" }
   ],
@@ -100,6 +102,7 @@ Devuelve SIEMPRE un JSON con esta estructura exacta:
   "tiempo_preparacion": 15,
   "tiempo_coccion": 30,
   "dificultad": "fácil|media|difícil",
+  "imagen_busqueda": "2-4 English keywords describing the finished dish for a food photo search (e.g. 'chocolate lava cake dessert')",
   "ingredientes": [
     { "cantidad": "200", "unidad": "g", "nombre": "harina" }
   ],

@@ -12,6 +12,10 @@ function getPerfilDir(userId) {
   return path.join(BASE_DIR, `chrome-perfil-${userId}`);
 }
 
+function getSessionFile(userId) {
+  return path.join(BASE_DIR, `cookido-sesion-${userId}.json`);
+}
+
 // ── Lanzar Chrome con perfil persistente por usuario ─────────────────────────
 async function abrirNavegador(perfilDir, { headless = true } = {}) {
   const args = [
@@ -19,16 +23,26 @@ async function abrirNavegador(perfilDir, { headless = true } = {}) {
     '--disable-setuid-sandbox',
     '--disable-blink-features=AutomationControlled',
     '--disable-features=IsolateOrigins,site-per-process',
+    '--disable-infobars',
+    '--window-size=1280,800',
   ];
 
-  return chromium.launchPersistentContext(perfilDir, {
+  const opts = {
     headless,
     locale: 'es-ES',
     viewport: { width: 1280, height: 800 },
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     args,
     ignoreDefaultArgs: ['--enable-automation'],
-  });
+  };
+
+  // Intentar con Chrome real (mucho más difícil de detectar como bot)
+  try {
+    return await chromium.launchPersistentContext(perfilDir, { ...opts, channel: 'chrome' });
+  } catch {
+    // Fallback a Chromium si Chrome no está instalado
+    return await chromium.launchPersistentContext(perfilDir, opts);
+  }
 }
 
 // ── LOGIN CON CREDENCIALES ────────────────────────────────────────────────────
@@ -36,66 +50,151 @@ async function iniciarSesionConCredenciales(email, password, onStatus, userId) {
   const perfilDir = getPerfilDir(userId);
   const log = (msg) => { console.log(`[Cookidoo] ${msg}`); if (onStatus) onStatus(msg); };
 
+  // Limpiar perfil anterior para evitar estados corruptos
+  if (fs.existsSync(perfilDir)) {
+    fs.rmSync(perfilDir, { recursive: true, force: true });
+    log('Perfil anterior limpiado ✓');
+  }
+
   log('Abriendo Chrome para login...');
   const context = await abrirNavegador(perfilDir, { headless: true });
   const page = context.pages()[0] || await context.newPage();
 
   try {
+    // Ocultar señales de automatización
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+    });
+
     log('Abriendo página de login...');
-    await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForTimeout(1500 + Math.random() * 1000);
     log('URL actual: ' + page.url());
 
+    // Cerrar banner de cookies si aparece antes del formulario
+    try {
+      const btnCookies = page.locator('#onetrust-accept-btn-handler, button:has-text("Aceptar todo"), button:has-text("Accept All")').first();
+      await btnCookies.waitFor({ state: 'visible', timeout: 4000 });
+      await btnCookies.click();
+      await page.waitForTimeout(800);
+    } catch { /* no hay banner */ }
+
     // Verificar que el formulario de login cargó
-    const emailField = await page.$('input[type="email"], input[name="email"], #email, input[name="loginEmail"]');
+    const emailSelector = 'input[type="email"], input[name="email"], #email, input[name="loginEmail"]';
+    const emailField = await page.$(emailSelector);
     if (!emailField) {
-      throw new Error('Cloudflare bloqueó el acceso en modo background. Intenta cerrar la sesión actual y volver a conectar.');
+      await page.screenshot({ path: path.join(BASE_DIR, 'debug_login_bloqueado.png'), fullPage: true });
+      throw new Error('No se encontró el formulario de login. Revisa debug_login_bloqueado.png — puede ser un bloqueo de Cloudflare.');
     }
 
-    log('Rellenando credenciales...');
-    await page.fill('input[type="email"], input[name="email"], #email, input[name="loginEmail"]', email, { timeout: 10000 });
-    await page.fill('input[type="password"], input[name="password"], #password', password, { timeout: 5000 });
+    // Escribir credenciales de forma humana (con delay entre teclas)
+    log('Rellenando email...');
+    await page.click(emailSelector);
+    await page.waitForTimeout(300 + Math.random() * 300);
+    await page.type(emailSelector, email, { delay: 60 + Math.random() * 60 });
+
+    await page.waitForTimeout(400 + Math.random() * 400);
+
+    const passSelector = 'input[type="password"], input[name="password"], #password';
+    log('Rellenando contraseña...');
+    await page.click(passSelector);
+    await page.waitForTimeout(300 + Math.random() * 200);
+    await page.type(passSelector, password, { delay: 50 + Math.random() * 50 });
+
+    await page.waitForTimeout(500 + Math.random() * 500);
 
     log('Enviando formulario...');
     await page.click('button[type="submit"]', { timeout: 5000 });
 
+    // Esperar a que la URL salga de la página de login
     log('Esperando confirmación de login...');
-    await page.waitForFunction(
-      (base) => window.location.href.startsWith(base) && !window.location.href.includes('login') && !window.location.href.includes('ciam'),
-      COOKIDOO_BASE,
-      { timeout: 90000 }
-    ).catch(() => {
-      throw new Error('Timeout: Cookidoo no respondió al login. Puede que esté bloqueando el acceso automático — intentá de nuevo.');
-    });
+    const deadline = Date.now() + 90000;
+    let logueado = false;
+    while (Date.now() < deadline) {
+      await page.waitForTimeout(1500);
+      const url = page.url();
+      log('URL: ' + url);
+      if (!url.includes('/login') && !url.includes('/ciam') && !url.includes('/profile/es-ES/login')) {
+        logueado = true;
+        break;
+      }
+    }
+
+    if (!logueado) {
+      await page.screenshot({ path: path.join(BASE_DIR, 'debug_login_timeout.png'), fullPage: true });
+      // Limpiar perfil inválido
+      try { await context.close(); } catch {}
+      if (fs.existsSync(perfilDir)) fs.rmSync(perfilDir, { recursive: true, force: true });
+      throw new Error('Timeout: Cookidoo no completó el login. Revisa debug_login_timeout.png — puede haber un CAPTCHA o 2FA pendiente.');
+    }
 
     log('Login exitoso ✓ Guardando sesión...');
-  } finally {
-    await context.close();
-    log('Sesión guardada. Ya puedes crear recetas.');
+    // Guardar cookies/localStorage explícitamente en fichero JSON
+    await context.storageState({ path: getSessionFile(userId) });
+    log('Sesión persistida en disco ✓');
+  } catch (err) {
+    try { await context.close(); } catch {}
+    // Limpiar sesión inválida
+    const sf = getSessionFile(userId);
+    if (fs.existsSync(sf)) fs.unlinkSync(sf);
+    throw err;
   }
+
+  try { await context.close(); } catch {}
+  log('Sesión guardada. Ya puedes crear recetas.');
 }
 
 // ── CREAR RECETA ──────────────────────────────────────────────────────────────
 async function crearRecetaEnCookidoo(receta, _credenciales, onStatus, userId) {
-  const perfilDir = getPerfilDir(userId);
+  const sessionFile = getSessionFile(userId);
   const log = (msg) => { console.log(`[Cookidoo] ${msg}`); if (onStatus) onStatus(msg); };
 
-  // Si no hay perfil guardado, el usuario debe conectarse primero desde la app
-  if (!fs.existsSync(perfilDir)) {
+  // Verificar que existe sesión guardada
+  if (!fs.existsSync(sessionFile)) {
     throw new Error('No hay sesión de Cookidoo activa. Conéctate desde la app primero.');
   }
 
-  const context = await abrirNavegador(perfilDir, { headless: true });
-  const page = context.pages()[0] || await context.newPage();
+  // Lanzar browser sin perfil persistente, cargando las cookies desde el fichero
+  const launchOpts = {
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+      '--disable-infobars',
+    ],
+  };
+
+  let browser;
+  try {
+    browser = await chromium.launch({ ...launchOpts, channel: 'chrome' });
+  } catch {
+    browser = await chromium.launch(launchOpts);
+  }
+
+  const context = await browser.newContext({
+    storageState: sessionFile,
+    locale: 'es-ES',
+    viewport: { width: 1280, height: 800 },
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    ignoreHTTPSErrors: false,
+  });
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+  });
+
+  const page = await context.newPage();
 
   try {
     log('Navegando a Mis recetas creadas...');
     await page.goto(RECETAS_CREADAS_URL, { waitUntil: 'networkidle' });
 
-    // Si nos redirige a login/ciam, sesión caducada → login manual
+    // Si nos redirige a login/ciam, sesión caducada → borrar y pedir reconexión
     if (page.url().includes('login') || page.url().includes('ciam')) {
       log('Sesión caducada. Reconectate a Cookidoo desde la app.');
-      await context.close();
-      fs.rmSync(perfilDir, { recursive: true, force: true });
+      try { await context.close(); } catch {}
+      try { await browser.close(); } catch {}
+      if (fs.existsSync(sessionFile)) fs.unlinkSync(sessionFile);
       throw new Error('Sesión de Cookidoo caducada. Volvé a conectarte desde la app.');
     }
 
@@ -233,10 +332,11 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus, userId) {
 
   } catch (error) {
     log(`Error: ${error.message}`);
-    try { await page.screenshot({ path: 'debug_error.png', fullPage: true }); } catch {}
+    try { await page.screenshot({ path: path.join(BASE_DIR, 'debug_error.png'), fullPage: true }); } catch {}
     throw error;
   } finally {
     try { await context.close(); } catch {}
+    try { await browser.close(); } catch {}
   }
 }
 
@@ -365,4 +465,46 @@ async function extraerRecetaDeCookidoo(url, onStatus, userId) {
   }
 }
 
-module.exports = { crearRecetaEnCookidoo, iniciarSesionConCredenciales, extraerRecetaDeCookidoo };
+// ── PREVIEW LIGERO DE RECETA DESDE URL DE COOKIDOO ────────────────────────────
+async function extraerPreviewReceta(url, userId) {
+  const perfilDir = getPerfilDir(userId || 'anonimo');
+  const context = await abrirNavegador(perfilDir, { headless: true });
+  const page = context.pages()[0] || await context.newPage();
+
+  try {
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+
+    const preview = await page.evaluate(() => {
+      const jsonLd = document.querySelector('script[type="application/ld+json"]');
+      if (jsonLd) {
+        try {
+          const data = JSON.parse(jsonLd.textContent);
+          const recipe = Array.isArray(data)
+            ? data.find(d => d['@type'] === 'Recipe')
+            : (data['@type'] === 'Recipe' ? data : null);
+          if (recipe) {
+            let img = Array.isArray(recipe.image) ? recipe.image[0] : (recipe.image || '');
+            if (typeof img === 'object') img = img.url || '';
+            return {
+              titulo: recipe.name || '',
+              descripcion: (recipe.description || '').substring(0, 140),
+              imagen: img,
+              tiempo_total: recipe.totalTime || recipe.cookTime || '',
+              porciones: recipe.recipeYield || '',
+            };
+          }
+        } catch (e) {}
+      }
+      // Fallback DOM
+      const title = document.querySelector('h1')?.textContent?.trim() || document.title || '';
+      const imgEl = document.querySelector('article img, main img');
+      return { titulo: title, descripcion: '', imagen: imgEl?.src || '', tiempo_total: '', porciones: '' };
+    });
+
+    return preview;
+  } finally {
+    await context.close();
+  }
+}
+
+module.exports = { crearRecetaEnCookidoo, iniciarSesionConCredenciales, extraerRecetaDeCookidoo, extraerPreviewReceta, getSessionFile };

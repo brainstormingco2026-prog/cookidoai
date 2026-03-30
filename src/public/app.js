@@ -52,7 +52,20 @@ eventSource.onmessage = (e) => {
       document.getElementById('login-cargando').classList.add('hidden');
     } else {
       detenerProgreso();
-      mostrarResultado('Error: ' + datos.mensaje, 'error');
+      const esSesionCookidoo = datos.mensaje && (
+        datos.mensaje.includes('No hay sesión de Cookidoo') ||
+        datos.mensaje.includes('caducada') ||
+        datos.mensaje.includes('Conéctate desde la app')
+      );
+      if (esSesionCookidoo) {
+        // Abrir modal de login en lugar de mostrar error
+        document.getElementById('login-email').value = '';
+        document.getElementById('login-password').value = '';
+        ocultarErrorInline('error-login');
+        document.getElementById('modal-login').classList.remove('hidden');
+      } else {
+        mostrarResultado('Error: ' + datos.mensaje, 'error');
+      }
     }
   }
 
@@ -62,10 +75,11 @@ eventSource.onmessage = (e) => {
     document.getElementById('login-acciones').classList.remove('hidden');
     document.getElementById('login-cargando').classList.add('hidden');
     actualizarEstadoSesion(true, datos.email);
-    // Si estamos en pantalla de progreso (login desde receta), mostrar resultado
+    // Si estamos en pantalla de progreso (login tras error de sesión), volver a la receta para reintentar
     if (!secProgreso.classList.contains('hidden')) {
       detenerProgreso();
-      mostrarResultado('✓ Sesión guardada. Ya puedes crear recetas.', 'exito');
+      ocultar(secProgreso);
+      mostrar(secReceta);
     }
   }
 };
@@ -251,7 +265,7 @@ document.getElementById('btn-foto').addEventListener('click', async () => {
     if (!res.ok) throw new Error(datos.error);
     recetaActual = datos.receta;
     mostrarReceta(datos.receta);
-    buscarImagenReceta(datos.receta.titulo);
+    buscarImagenReceta(datos.receta.imagen_busqueda || datos.receta.titulo);
     ocultar(secPrincipal);
     mostrar(secReceta);
   } catch (err) {
@@ -260,6 +274,62 @@ document.getElementById('btn-foto').addEventListener('click', async () => {
     ocultarOverlay();
   }
 });
+
+// —— Preview de receta al introducir URL ——
+let previewTimeout = null;
+
+document.getElementById('url-receta').addEventListener('input', () => {
+  clearTimeout(previewTimeout);
+  const url = document.getElementById('url-receta').value.trim();
+  if (!url || !url.includes('cookidoo')) {
+    ocultar(document.getElementById('preview-receta'));
+    return;
+  }
+  previewTimeout = setTimeout(() => cargarPreviewReceta(url), 700);
+});
+
+async function cargarPreviewReceta(url) {
+  const previewEl = document.getElementById('preview-receta');
+  document.getElementById('preview-titulo').textContent = 'Cargando...';
+  document.getElementById('preview-tiempo').textContent = '';
+  const imgEl = document.getElementById('preview-imagen');
+  imgEl.style.display = '';
+  imgEl.src = '';
+  mostrar(previewEl);
+
+  try {
+    const res = await fetch(`/api/preview-receta?url=${encodeURIComponent(url)}`);
+    const datos = await res.json();
+    if (!res.ok) throw new Error(datos.error);
+
+    const p = datos.preview;
+    document.getElementById('preview-titulo').textContent = p.titulo || 'Receta de Cookidoo';
+
+    const tiempoEl = document.getElementById('preview-tiempo');
+    tiempoEl.innerHTML = p.tiempo_total
+      ? `<span class="material-symbols-outlined" style="font-size:13px">schedule</span> ${formatearTiempoISO(p.tiempo_total)}`
+      : '';
+
+    if (p.imagen) {
+      imgEl.src = p.imagen;
+    } else {
+      imgEl.style.display = 'none';
+    }
+  } catch (err) {
+    ocultar(previewEl);
+  }
+}
+
+function formatearTiempoISO(iso) {
+  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  if (!match) return iso;
+  const h = parseInt(match[1] || 0);
+  const m = parseInt(match[2] || 0);
+  if (h && m) return `${h}h ${m}min`;
+  if (h) return `${h}h`;
+  if (m) return `${m}min`;
+  return iso;
+}
 
 // —— Adaptar receta existente ——
 document.getElementById('btn-adaptar').addEventListener('click', async () => {
@@ -279,7 +349,7 @@ document.getElementById('btn-adaptar').addEventListener('click', async () => {
     if (!res.ok) throw new Error(datos.error);
     recetaActual = datos.receta;
     mostrarReceta(datos.receta);
-    buscarImagenReceta(datos.receta.titulo);
+    buscarImagenReceta(datos.receta.imagen_busqueda || datos.receta.titulo);
     ocultar(secPrincipal);
     mostrar(secReceta);
   } catch (err) {
@@ -307,7 +377,7 @@ document.getElementById('btn-generar').addEventListener('click', async () => {
     if (!res.ok) throw new Error(datos.error);
     recetaActual = datos.receta;
     mostrarReceta(datos.receta);
-    buscarImagenReceta(datos.receta.titulo);
+    buscarImagenReceta(datos.receta.imagen_busqueda || datos.receta.titulo);
     ocultar(secPrincipal);
     mostrar(secReceta);
   } catch (err) {
