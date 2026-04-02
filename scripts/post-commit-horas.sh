@@ -58,7 +58,7 @@ else:
 
 # Recalcular total sumando todas las filas de sesión (YYYY-MM-DD)
 session_re = re.compile(r"^\| (\d{4}-\d{2}-\d{2}) \| ([\d.]+)h \|", re.MULTILINE)
-total = sum(float(m.group(2)) for m in session_re.finditer(content))
+total = round(sum(float(m.group(2)) for m in session_re.finditer(content)), 1)
 total_fmt = str(int(total)) if total == int(total) else str(total)
 content = re.sub(r"\| \*\*TOTAL\*\* \| [^|]+ \|", f"| **TOTAL** | **{total_fmt}h** |", content)
 

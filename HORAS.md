@@ -6,7 +6,7 @@
 |---|---|
 | **Fecha de inicio** | 2026-03-23 |
 | **Última actualización** | 2026-04-02 |
-| **Total de horas** | 23.8h |
+| **Total de horas** | 24.1h |
 
 ---
 
@@ -18,8 +18,8 @@
 | 2026-03-24 | 1h | v1.1 - Editor de receta, imagen Pexels y modo sin DB |
 | 2026-03-25 | 7h | Deploy config para Render + fix Playwright en producción; Auth sin DB: usuarios estáticos para UAT; Sesión Cookidoo por usuario: perfil Chrome separado; Auto-login Cookidoo con env vars |
 | 2026-03-29 | 11.7h | Actualizar HORAS.md y preview inline de receta en UI; Fix sesión Cookidoo: storageState explícito + mejoras anti-detección + imágenes Pexels; UAT2: quitar límite de 10 recetas para uat2@cookidoai.com |
-| 2026-04-02 | 1.6h | Fix HORAS.md: corregir total a 23.8h y arreglar regex del script que no matcheaba bold; Renombrar botones a 'Generar receta' y deshabilitar sin sesión Cookidoo activa; Fix timeout: reemplazar networkidle por load en todas las navegaciones de Cookidoo |
-| **TOTAL** | **23.8h** | |
+| 2026-04-02 | 1.9h | SSE: no loguear errores hasta el 3er intento fallido consecutivo; Actualizar HORAS.md; Fix HORAS.md: corregir total a 23.8h y arreglar regex del script que no matcheaba bold |
+| **TOTAL** | **24.1h** | |
 
 ---
 
