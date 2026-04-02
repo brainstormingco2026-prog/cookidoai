@@ -202,6 +202,11 @@ document.getElementById('btn-login-confirmar').addEventListener('click', async (
     const intervalo = setInterval(async () => {
       try {
         const r = await fetch('/api/sesion');
+        if (r.status === 401) {
+          clearInterval(intervalo);
+          location.href = '/login';
+          return;
+        }
         const d = await r.json();
         if (d.activa) {
           clearInterval(intervalo);
