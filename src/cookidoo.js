@@ -201,15 +201,8 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus, userId) {
     log('Sesión activa ✓');
 
     // ── CERRAR BANNER DE COOKIES ──────────────────────────────────────────────
-    try {
-      const btnCookies = page.locator('#onetrust-accept-btn-handler, button:has-text("Aceptar todo"), button:has-text("Accept All")').first();
-      await btnCookies.waitFor({ state: 'visible', timeout: 5000 });
-      await btnCookies.click();
-      log('Banner de cookies cerrado ✓');
-      await page.waitForTimeout(500);
-    } catch {
-      // No hay banner, continuar
-    }
+    await cerrarBannerCookies(page);
+    log('Banner de cookies verificado ✓');
 
     // ── BOTÓN CREAR RECETA ────────────────────────────────────────────────────
     log('Buscando botón de crear receta...');
@@ -284,6 +277,7 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus, userId) {
 
     await btnIngredientes.click();
     await page.waitForLoadState('networkidle');
+    await cerrarBannerCookies(page);
     await page.waitForTimeout(1000);
     await page.screenshot({ path: 'debug_editor_ingredientes.png', fullPage: true });
     log('Editor de ingredientes cargado ✓');
@@ -338,6 +332,17 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus, userId) {
     try { await context.close(); } catch {}
     try { await browser.close(); } catch {}
   }
+}
+
+// ── CERRAR BANNER COOKIES (reutilizable en cualquier página) ──────────────────
+async function cerrarBannerCookies(page) {
+  try {
+    const btn = page.locator('#onetrust-accept-btn-handler, button:has-text("Aceptar todo"), button:has-text("Accept All")').first();
+    await btn.waitFor({ state: 'visible', timeout: 3000 });
+    await btn.click();
+    await page.locator('#onetrust-consent-sdk').waitFor({ state: 'hidden', timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(300);
+  } catch { /* no hay banner */ }
 }
 
 // ── ESCRIBIR EN CR-TEXT-FIELD (web component contenteditable) ─────────────────

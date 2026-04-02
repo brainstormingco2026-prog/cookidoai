@@ -223,7 +223,7 @@ app.get('/api/imagen', async (req, res) => {
   if (!process.env.PEXELS_API_KEY) return res.status(503).json({ error: 'PEXELS_API_KEY no configurada' });
 
   try {
-    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=1&orientation=landscape`;
+    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(q + ' food')}&per_page=1&orientation=landscape`;
     const r = await fetch(url, { headers: { Authorization: process.env.PEXELS_API_KEY } });
     const datos = await r.json();
     const foto = datos.photos?.[0];

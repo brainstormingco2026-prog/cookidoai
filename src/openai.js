@@ -32,7 +32,8 @@ Devuelve SIEMPRE un JSON con esta estructura exacta:
     "descripción detallada del paso, sin prefijo Paso 2"
   ]
 }
-Adapta las instrucciones para Thermomix cuando sea posible (velocidades, temperaturas, tiempos).`,
+Adapta las instrucciones para Thermomix cuando sea posible (velocidades, temperaturas, tiempos).
+IMPORTANTE: El campo imagen_busqueda SIEMPRE debe estar en inglés, nunca en español. Son keywords para buscar fotos del plato terminado.`,
       },
       {
         role: 'user',
@@ -72,7 +73,8 @@ Devuelve SIEMPRE un JSON con esta estructura exacta:
     "descripción detallada del paso adaptado para Thermomix, sin prefijo Paso 1"
   ]
 }
-Adapta tiempos, temperaturas y velocidades para Thermomix. Mantén los ingredientes originales salvo que se indique lo contrario.`,
+Adapta tiempos, temperaturas y velocidades para Thermomix. Mantén los ingredientes originales salvo que se indique lo contrario.
+IMPORTANTE: El campo imagen_busqueda SIEMPRE debe estar en inglés, nunca en español. Son keywords para buscar fotos del plato terminado.`,
       },
       {
         role: 'user',
@@ -110,7 +112,8 @@ Devuelve SIEMPRE un JSON con esta estructura exacta:
     "descripción detallada del paso adaptado para Thermomix, sin prefijo Paso 1"
   ]
 }
-Si algo no está claro en la imagen, usa tu criterio como chef.`,
+Si algo no está claro en la imagen, usa tu criterio como chef.
+IMPORTANTE: El campo imagen_busqueda SIEMPRE debe estar en inglés, nunca en español. Son keywords para buscar fotos del plato terminado.`,
       },
       {
         role: 'user',
