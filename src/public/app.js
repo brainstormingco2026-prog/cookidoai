@@ -32,8 +32,8 @@ const eventSource = new EventSource('/api/eventos');
 let _sseErrores = 0;
 eventSource.onerror = async () => {
   _sseErrores++;
-  console.warn('SSE: error #' + _sseErrores);
   if (_sseErrores >= 3) {
+    console.warn('SSE: error #' + _sseErrores);
     // Verificar si la sesión de app expiró
     try {
       const r = await fetch('/api/auth/me');
