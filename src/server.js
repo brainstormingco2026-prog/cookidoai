@@ -72,9 +72,10 @@ app.get('/', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Proteger todas las rutas /api/* excepto las de auth
+// Proteger todas las rutas /api/* excepto auth y SSE
 app.use('/api', (req, res, next) => {
   if (req.path.startsWith('/auth/')) return next();
+  if (req.path === '/eventos') return next(); // SSE: solo recibe broadcast, no datos sensibles
   requireAuth(req, res, next);
 });
 

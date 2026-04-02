@@ -29,7 +29,23 @@ const overlay      = document.getElementById('overlay-cargando');
 
 // —— SSE ——
 const eventSource = new EventSource('/api/eventos');
-eventSource.onerror = () => console.warn('SSE: reconectando...');
+let _sseErrores = 0;
+eventSource.onerror = async () => {
+  _sseErrores++;
+  console.warn('SSE: error #' + _sseErrores);
+  if (_sseErrores >= 3) {
+    // Verificar si la sesión de app expiró
+    try {
+      const r = await fetch('/api/auth/me');
+      if (r.status === 401) {
+        eventSource.close();
+        alert('Tu sesión expiró. Por favor recargá la página e iniciá sesión de nuevo.');
+        location.href = '/login';
+      }
+    } catch {}
+  }
+};
+eventSource.onopen = () => { _sseErrores = 0; };
 eventSource.onmessage = (e) => {
   const datos = JSON.parse(e.data);
 
