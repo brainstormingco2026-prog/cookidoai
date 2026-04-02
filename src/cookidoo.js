@@ -340,9 +340,14 @@ async function cerrarBannerCookies(page) {
     const btn = page.locator('#onetrust-accept-btn-handler, button:has-text("Aceptar todo"), button:has-text("Accept All")').first();
     await btn.waitFor({ state: 'visible', timeout: 3000 });
     await btn.click();
-    await page.locator('#onetrust-consent-sdk').waitFor({ state: 'hidden', timeout: 8000 }).catch(() => {});
+    await page.locator('#onetrust-consent-sdk').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(300);
   } catch { /* no hay banner */ }
+  // Por si el banner sigue bloqueando clicks, eliminarlo del DOM directamente
+  await page.evaluate(() => {
+    document.getElementById('onetrust-consent-sdk')?.remove();
+    document.getElementById('onetrust-style')?.remove();
+  }).catch(() => {});
 }
 
 // ── ESCRIBIR EN CR-TEXT-FIELD (web component contenteditable) ─────────────────
