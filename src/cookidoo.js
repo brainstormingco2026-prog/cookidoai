@@ -322,6 +322,11 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus, userId) {
     await page.screenshot({ path: 'receta_creada.png', fullPage: true });
     log('¡Receta creada correctamente! ✓');
     log(`URL: ${urlReceta}`);
+
+    // Persistir sesión actualizada (Cookidoo rota tokens en cada operación)
+    await context.storageState({ path: sessionFile });
+    log('Sesión actualizada ✓');
+
     return { ok: true, url: urlReceta };
 
   } catch (error) {
