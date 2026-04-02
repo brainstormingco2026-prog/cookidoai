@@ -155,6 +155,9 @@ function actualizarEstadoSesion(activa, email) {
   document.getElementById('estado-sesion-ok').classList.toggle('hidden', !activa);
   document.getElementById('estado-sesion-no').classList.toggle('hidden', activa);
   if (email) document.getElementById('sesion-email').textContent = email;
+  const btnGenerar = document.getElementById('btn-generar');
+  btnGenerar.disabled = !activa;
+  btnGenerar.title = activa ? '' : 'Conectá tu cuenta de Cookidoo primero';
 }
 
 // —— Login desde pantalla principal ——
