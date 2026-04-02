@@ -65,10 +65,18 @@ function requireAuth(req, res, next) {
 }
 
 // Archivos estáticos públicos (login.html, css, etc.)
-app.use(express.static(path.join(__dirname, 'public')));
+// HTML y JS sin caché para que el browser siempre pida la versión más reciente
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders(res, filePath) {
+    if (filePath.endsWith('.html') || filePath.endsWith('.js')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
 
 // Ruta raíz protegida
 app.get('/', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

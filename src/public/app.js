@@ -1,5 +1,15 @@
 let recetaActual = null;
 
+// Wrapper global: cualquier 401 redirige a login sin loops
+async function apiFetch(url, opts) {
+  const r = await fetch(url, opts);
+  if (r.status === 401) {
+    location.href = '/login';
+    return new Response('{}', { status: 401 });
+  }
+  return r;
+}
+
 // Frases de cocina para la pantalla de progreso
 const FRASES = [
   'Precalentando el Thermomix...',
@@ -145,7 +155,7 @@ document.getElementById('btn-logout').addEventListener('click', async () => {
 // —— Estado de sesión al cargar ——
 window.addEventListener('load', async () => {
   try {
-    const res = await fetch('/api/sesion');
+    const res = await apiFetch('/api/sesion');
     const datos = await res.json();
     actualizarEstadoSesion(datos.activa, datos.email);
   } catch {}
@@ -201,7 +211,7 @@ document.getElementById('btn-login-confirmar').addEventListener('click', async (
     document.getElementById('login-cargando-msg').textContent = 'Se abrirá Chrome brevemente para completar el login...';
     const intervalo = setInterval(async () => {
       try {
-        const r = await fetch('/api/sesion');
+        const r = await apiFetch('/api/sesion');
         if (r.status === 401) {
           clearInterval(intervalo);
           location.href = '/login';
@@ -226,7 +236,7 @@ document.getElementById('btn-login-confirmar').addEventListener('click', async (
 });
 
 document.getElementById('btn-cerrar-sesion').addEventListener('click', async () => {
-  await fetch('/api/cerrar-sesion', { method: 'POST' });
+  await apiFetch('/api/cerrar-sesion', { method: 'POST' });
   actualizarEstadoSesion(false);
 });
 
@@ -297,7 +307,7 @@ document.getElementById('btn-foto').addEventListener('click', async () => {
       reader.readAsDataURL(file);
     });
 
-    const res = await fetch('/api/foto', {
+    const res = await apiFetch('/api/foto', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ imagen: base64, tipo: file.type, detalles }),
@@ -381,7 +391,7 @@ document.getElementById('btn-adaptar').addEventListener('click', async () => {
 
   mostrarOverlay('Leyendo receta de Cookidoo...');
   try {
-    const res = await fetch('/api/adaptar', {
+    const res = await apiFetch('/api/adaptar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, detalles }),
@@ -409,7 +419,7 @@ document.getElementById('btn-generar').addEventListener('click', async () => {
 
   mostrarOverlay('Generando receta para tu Thermomix...');
   try {
-    const res = await fetch('/api/generar', {
+    const res = await apiFetch('/api/generar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ descripcion, detalles }),
@@ -450,7 +460,7 @@ document.getElementById('btn-regenerar').addEventListener('click', () => {
 
 document.getElementById('btn-aceptar').addEventListener('click', async () => {
   // Verificar sesión antes de continuar
-  const res = await fetch('/api/sesion');
+  const res = await apiFetch('/api/sesion');
   const { activa, email } = await res.json();
   actualizarEstadoSesion(activa, email);
 
@@ -466,7 +476,7 @@ document.getElementById('btn-aceptar').addEventListener('click', async () => {
   mostrar(secProgreso);
 
   try {
-    await fetch('/api/crear', {
+    await apiFetch('/api/crear', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ receta: recetaActual }),
@@ -490,7 +500,7 @@ function volverAlInicio() {
   ocultar(secProgreso);
   ocultar(secReceta);
   mostrar(secPrincipal);
-  fetch('/api/sesion').then(r => r.json()).then(d => actualizarEstadoSesion(d.activa, d.email));
+  apiFetch('/api/sesion').then(r => r.json()).then(d => actualizarEstadoSesion(d.activa, d.email));
 }
 document.getElementById('btn-nueva').addEventListener('click', volverAlInicio);
 document.getElementById('btn-nueva-error').addEventListener('click', volverAlInicio);
