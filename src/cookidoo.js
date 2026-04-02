@@ -187,7 +187,7 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus, userId) {
 
   try {
     log('Navegando a Mis recetas creadas...');
-    await page.goto(RECETAS_CREADAS_URL, { waitUntil: 'networkidle' });
+    await page.goto(RECETAS_CREADAS_URL, { waitUntil: 'load' });
 
     // Si nos redirige a login/ciam, sesión caducada → borrar y pedir reconexión
     if (page.url().includes('login') || page.url().includes('ciam')) {
@@ -256,7 +256,7 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus, userId) {
     await page.click('button[type="submit"].button--primary', { timeout: 5000 });
     log('Receta creada, cargando editor...');
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await page.waitForTimeout(1500);
     await page.screenshot({ path: 'debug_tras_popup.png', fullPage: true });
     log('Popup confirmado ✓');
@@ -276,7 +276,7 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus, userId) {
     }
 
     await btnIngredientes.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await cerrarBannerCookies(page);
     await page.waitForTimeout(1000);
     await page.screenshot({ path: 'debug_editor_ingredientes.png', fullPage: true });
@@ -315,7 +315,7 @@ async function crearRecetaEnCookidoo(receta, _credenciales, onStatus, userId) {
 
     if (botonGuardar) {
       await botonGuardar.click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
     }
 
     const urlReceta = page.url().replace(/\/edit\/.*$/, '');
@@ -449,7 +449,7 @@ async function extraerRecetaDeCookidoo(url, onStatus, userId) {
   const page = context.pages()[0] || await context.newPage();
 
   try {
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto(url, { waitUntil: 'load', timeout: 30000 });
 
     // Extraer texto relevante de la página
     const contenido = await page.evaluate(() => {
@@ -482,7 +482,7 @@ async function extraerPreviewReceta(url, userId) {
   const page = context.pages()[0] || await context.newPage();
 
   try {
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto(url, { waitUntil: 'load', timeout: 30000 });
 
     const preview = await page.evaluate(() => {
       const jsonLd = document.querySelector('script[type="application/ld+json"]');
