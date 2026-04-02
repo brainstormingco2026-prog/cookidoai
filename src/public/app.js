@@ -34,8 +34,16 @@ eventSource.onmessage = (e) => {
   const datos = JSON.parse(e.data);
 
   if (datos.tipo === 'progreso') {
-    // No mostramos el log técnico, solo actualizamos internamente
     console.log('[progreso]', datos.mensaje);
+    // Mostrar en el modal de login si está en curso
+    const modal = document.getElementById('modal-login');
+    if (!modal.classList.contains('hidden')) {
+      const msg = datos.mensaje
+        .replace(/\s*Revisa debug[^\s]*\.png[^.]*\./gi, '.')
+        .replace(/^URL(?: actual)?:.*$/i, '')
+        .trim();
+      if (msg) document.getElementById('login-cargando-msg').textContent = msg;
+    }
   }
 
   if (datos.tipo === 'completado') {
@@ -46,10 +54,15 @@ eventSource.onmessage = (e) => {
 
   if (datos.tipo === 'error') {
     if (!document.getElementById('modal-login').classList.contains('hidden')) {
-      // Error durante login desde modal
-      mostrarErrorInline('error-login', datos.mensaje);
+      // Error durante login desde modal — mostrar razón real, preparar reintento
+      const mensajeLimpio = (datos.mensaje || 'Error desconocido')
+        .replace(/\s*Revisa debug[^\s]*\.png[^.]*\./gi, '.')
+        .replace(/\.$/, '')
+        .trim();
+      mostrarErrorInline('error-login', mensajeLimpio);
       document.getElementById('login-acciones').classList.remove('hidden');
       document.getElementById('login-cargando').classList.add('hidden');
+      document.getElementById('login-cargando-msg').textContent = 'Conectando...';
     } else {
       detenerProgreso();
       const esSesionCookidoo = datos.mensaje && (
@@ -74,6 +87,7 @@ eventSource.onmessage = (e) => {
     document.getElementById('modal-login').classList.add('hidden');
     document.getElementById('login-acciones').classList.remove('hidden');
     document.getElementById('login-cargando').classList.add('hidden');
+    document.getElementById('login-cargando-msg').textContent = 'Conectando...';
     actualizarEstadoSesion(true, datos.email);
     // Si estamos en pantalla de progreso (login tras error de sesión), volver a la receta para reintentar
     if (!secProgreso.classList.contains('hidden')) {
